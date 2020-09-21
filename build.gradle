@@ -28,6 +28,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     compile group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
     implementation 'org.nanohttpd:nanohttpd:2.2.0'
+    compile group: 'com.squareup.moshi', name: 'moshi', version: '1.10.0'
+    compile group: 'com.squareup.moshi', name: 'moshi-kotlin', version: '1.10.0'
 
     ktlint "com.pinterest:ktlint:0.39.0"
     testImplementation "io.mockk:mockk:1.10.0"
