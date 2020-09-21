@@ -19,7 +19,8 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.*
+import io.kotest.matchers.should
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.startWith
 
 class MyTests : StringSpec({
