@@ -33,10 +33,5 @@ jobs:
             - ~/.gradle
           key: v1-dependencies-{{ checksum "build.gradle" }}
 
-      # run linter!
-      - run:
-          name: pre-check
-          command: chmod +x gradlew ktlint
-
       # run tests!
       - run: gradle test
