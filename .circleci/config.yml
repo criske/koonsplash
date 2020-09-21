@@ -39,7 +39,9 @@ jobs:
           key: v1-dependencies-{{ checksum "build.gradle" }}
 
       # run linter!
-      - run: gradle ktlint
+      - run:
+        name: pre-check
+        command: ./gradlew ktlint lint --no-daemon
 
       # run tests!
       - run: gradle test
