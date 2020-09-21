@@ -41,7 +41,7 @@ jobs:
       # run linter!
       - run:
           name: pre-check
-          command: chmod +x ./gradlew ktlint lint --no-daemon
+          command: chmod +x ./gradlew ktlint
 
       # run tests!
       - run: gradle test
