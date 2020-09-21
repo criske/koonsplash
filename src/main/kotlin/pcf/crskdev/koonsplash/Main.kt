@@ -1,4 +1,4 @@
-package pcf.crskdev.kunsplash
+package pcf.crskdev.koonsplash
 
 fun main() {
     println("Hello world")
