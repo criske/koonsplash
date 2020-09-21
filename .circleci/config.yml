@@ -40,8 +40,8 @@ jobs:
 
       # run linter!
       - run:
-        name: pre-check
-        command: ./gradlew ktlint lint --no-daemon
+          name: pre-check
+          command: ./gradlew ktlint lint --no-daemon
 
       # run tests!
       - run: gradle test
