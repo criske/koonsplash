@@ -73,8 +73,8 @@ interface AuthCalls {
     ): Result<AuthToken>
 }
 
-internal typealias AuthorizationCode = String
-internal typealias AuthenticityToken = String
+typealias AuthorizationCode = String
+typealias AuthenticityToken = String
 
-internal class NeedsLogin(val authenticityToken: AuthenticityToken) : RuntimeException()
-internal object InvalidCredentials : RuntimeException()
+class NeedsLogin(val authenticityToken: AuthenticityToken) : RuntimeException()
+object InvalidCredentials : RuntimeException()
