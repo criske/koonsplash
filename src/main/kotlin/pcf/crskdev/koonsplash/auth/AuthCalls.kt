@@ -34,7 +34,7 @@ internal interface AuthCalls {
     /**
      * Request authorization code.
      *
-     * If _AuthorizationCodeNotFound_ is thrown one must use _loginForm_ with
+     * If _NeedsLogin_ is thrown one must use _loginForm_ with
      * _authenticityToken(csrf-token)_ that comes with the exception.
      *
      * @param accessKey API accessKey.
@@ -73,7 +73,7 @@ internal interface AuthCalls {
      * @param authorizationCode Authorization code.
      * @param accessKey API access key.
      * @param secretKey API private/secret key.
-     * @param redirectUri 	A URI that handles creating a new installation-specific client_id (not used here) .
+     * @param redirectUri A URI that handles creating a new installation-specific client_id (not used here) .
      * @return AuthToken on success.
      */
     fun token(authorizationCode: AuthorizationCode, accessKey: String, secretKey: String, redirectUri: URI): Result<AuthToken>
