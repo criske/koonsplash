@@ -5,6 +5,7 @@ import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.Authorizer
 
 fun main() {
+
     val storage = object : AuthTokenStorage {
         override fun save(token: AuthToken) {
             TODO("Not yet implemented")
