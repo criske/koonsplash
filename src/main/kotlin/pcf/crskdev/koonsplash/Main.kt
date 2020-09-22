@@ -9,8 +9,8 @@ import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
 import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.InvalidCredentials
-import pcf.crskdev.koonsplash.auth.LoginFormController
 import pcf.crskdev.koonsplash.auth.LoginForm
+import pcf.crskdev.koonsplash.auth.LoginFormController
 import pcf.crskdev.koonsplash.auth.NeedsLogin
 import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
