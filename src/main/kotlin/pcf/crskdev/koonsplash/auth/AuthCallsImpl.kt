@@ -98,10 +98,7 @@ internal class AuthCallsImpl(
         return tryResult(response) {
             val document = Jsoup.parse(response.body?.string())
             val invalidCredentials = document
-                .selectFirst(
-                    "body > div.flash.flash--alert.animated.js-flash.js-flash-alert " +
-                        "> div > div >" + " div.col-xs-10.col-sm-6.center-block.flash__message"
-                )
+                .selectFirst("body > div.flash.flash--alert.animated.js-flash.js-flash-alert > div > div > div.col-xs-10.col-sm-6.center-block.flash__message")
                 ?.text() != null
             if (invalidCredentials) {
                 Result.failure(InvalidCredentials)
