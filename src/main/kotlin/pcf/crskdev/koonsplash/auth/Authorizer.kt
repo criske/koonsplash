@@ -24,7 +24,17 @@ package pcf.crskdev.koonsplash.auth
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.json.JsonClient
 import java.net.URI
+import java.util.concurrent.Executor
 
+/**
+ * Authorizer for authenticated API requests.
+ *
+ * @property accessKey Access key.
+ * @property secretKey Secret key.
+ * @property server Authorize code callback server.
+ * @property authCalls Authorization flow calls abstraction.
+ * @property storage AuthToken storage.
+ */
 class Authorizer(
     private val accessKey: AccessKey,
     private val secretKey: SecretKey,
@@ -33,12 +43,30 @@ class Authorizer(
     private val storage: AuthTokenStorage,
 ) {
 
+    /**
+     * OAuth2 authorization flow done in background thread provided by executor.
+     * unless there is an AuthToken saved in storage.
+     *
+     * @param executor Background thread.
+     * @param loginFormController Login controller activates the login form if needed.
+     * @param onError Failed authorizing callback.
+     * @param onSuccess Success authorizing callback.
+     * @receiver onError receives the error message.
+     * @receiver onSuccess receives the AuthToken.
+     */
     fun authorize(
-        email: String,
-        password: String,
+        executor: Executor,
+        loginFormController: LoginFormController,
         onError: (String) -> Unit,
         onSuccess: (AuthToken) -> Unit
     ) {
+        val authToken = storage.load()
+        if (authToken != null) {
+            // token already saved, is safe to return
+            onSuccess(authToken)
+            return
+        }
+
         val hasStarted = server.startServing()
         if (!hasStarted) {
             onError("Auth code server hasn't started")
@@ -51,29 +79,47 @@ class Authorizer(
             server.stopServing()
             onError(it)
         }
-        val authorize = authCalls.authorize(accessKey, server.callbackUri, AuthScope.PUBLIC)
-        authorize.onSuccess {
-            authCalls.token(it, accessKey, secretKey, server.callbackUri)
-                .onSuccess(onSuccessAndClose)
-                .onFailure {
-                    onErrorAndClose(it.message ?: "Unknown error: $it")
-                }
-        }.onFailure {
-            if (it is NeedsLogin) {
-                authCalls.loginForm(it.authenticityToken, email, password)
-                    .onSuccess {
-                        authCalls.token(it, accessKey, secretKey, server.callbackUri)
-                            .onSuccess(onSuccessAndClose)
-                            .onFailure {
-                                onErrorAndClose(it.message ?: "Unknown error: $it")
+        executor.execute {
+            authCalls
+                .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC)
+                .onSuccess { code ->
+                    authCalls.token(code, accessKey, secretKey, server.callbackUri)
+                        .onSuccess(onSuccessAndClose)
+                        .onFailure { onErrorAndClose(it.message ?: "Unknown error: $it") }
+                }.onFailure { authorizeErr ->
+                    if (authorizeErr is NeedsLogin) {
+                        val loginFormSubmitter = object : LoginFormSubmitter {
+                            override fun submit(email: String, password: String) {
+                                executor.execute {
+                                    authCalls.loginForm(authorizeErr.authenticityToken, email, password)
+                                        .onSuccess { code ->
+                                            authCalls.token(code, accessKey, secretKey, server.callbackUri)
+                                                .onSuccess { token ->
+                                                    loginFormController.onLoginSuccess()
+                                                    storage.save(token)
+                                                    onSuccessAndClose(token)
+                                                }
+                                                .onFailure { tokenErr ->
+                                                    onErrorAndClose(tokenErr.message ?: "Unknown error: $tokenErr")
+                                                }
+                                        }
+                                        .onFailure { loginErr ->
+                                            if (loginErr is InvalidCredentials) {
+                                                loginFormController.onLoginFailure()
+                                                loginFormController.activateForm()
+                                            } else {
+                                                onErrorAndClose(loginErr.message ?: "Unknown error: $loginErr")
+                                            }
+                                        }
+                                }
                             }
+                        }
+                        loginFormController.attachFormSubmitter(loginFormSubmitter)
+                        loginFormController.activateForm()
+                    } else {
+                        onErrorAndClose(authorizeErr.message ?: "Unknown error: $authorizeErr")
                     }
-                    .onFailure {
-                        onErrorAndClose(it.message ?: "Unknown error: $it")
-                    }
-            } else {
-                onErrorAndClose(it.message ?: "Unknown error: $it")
-            }
+                }
         }
     }
 }
