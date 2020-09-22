@@ -21,7 +21,10 @@
 
 package pcf.crskdev.koonsplash.http
 
+import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
+import java.net.CookieManager
+import java.net.CookiePolicy
 
 /**
  * Http client based on OkHttp.
@@ -29,5 +32,11 @@ import okhttp3.OkHttpClient
  * @since 0.1
  */
 object HttpClient {
-    val http = OkHttpClient()
+    val http = OkHttpClient.Builder()
+        .cookieJar(
+            JavaNetCookieJar(
+                CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }
+            )
+        )
+        .build()
 }

@@ -51,7 +51,7 @@ internal class AuthCallsImpl(
         .build()
 
     override fun authorize(
-        accessKey: String,
+        accessKey: AccessKey,
         redirectUri: URI,
         vararg scopes: AuthScope
     ): Result<AuthorizationCode> {
@@ -61,7 +61,7 @@ internal class AuthCallsImpl(
             .addQueryParameter("client_id", accessKey)
             .addEncodedQueryParameter("redirect_uri", redirectUri.toString())
             .addQueryParameter("response_type", "code")
-            .addEncodedQueryParameter("scope", scopes.joinToString("+"))
+            .addEncodedQueryParameter("scope", scopes.joinToString("+") { it.value })
             .build()
         val request = Request.Builder()
             .cacheControl(CacheControl.FORCE_NETWORK)
@@ -82,7 +82,7 @@ internal class AuthCallsImpl(
         authenticityToken: AuthenticityToken,
         email: String,
         password: String
-    ): Result<AuthenticityToken> {
+    ): Result<AuthorizationCode> {
         val form = FormBody.Builder()
             .add("utf8", "&#x2713;")
             .add("authenticity_token", authenticityToken)
@@ -103,44 +103,17 @@ internal class AuthCallsImpl(
             if (invalidCredentials) {
                 Result.failure(InvalidCredentials)
             } else {
-                Result.success(this.extractAuthenticityToken(document))
+                this.extractAuthorizationCode(document)
+                    ?.let { Result.success(it) }
+                    ?: Result.failure(IllegalStateException("Authorization code not found"))
             }
-        }
-    }
-
-    override fun authorizeForm(
-        authenticityToken: AuthenticityToken,
-        accessKey: String,
-        redirectUri: URI,
-        vararg scopes: AuthScope
-    ): Result<AuthorizationCode> {
-        val form = FormBody.Builder()
-            .add("utf8", "&#x2713;")
-            .add("authenticity_token", authenticityToken)
-            .add("client_id", accessKey)
-            .add("redirect_uri", redirectUri.toString())
-            .add("state", "state")
-            .add("response_type", "code")
-            .add("scope", scopes.joinToString(" "))
-            .build()
-        val request = Request.Builder()
-            .url(baseAuthHttpUrl.newBuilder().addPathSegment("authorize").build())
-            .cacheControl(CacheControl.FORCE_NETWORK)
-            .post(form)
-            .build()
-        val response = httpClient.newCall(request).execute()
-        return tryResult(response) {
-            val document = Jsoup.parse(response.body?.string())
-            this.extractAuthorizationCode(document)?.let {
-                Result.success(it)
-            } ?: Result.failure(IllegalStateException("Authorization code not found"))
         }
     }
 
     override fun token(
         authorizationCode: AuthorizationCode,
-        accessKey: String,
-        secretKey: String,
+        accessKey: AccessKey,
+        secretKey: SecretKey,
         redirectUri: URI
     ): Result<AuthToken> {
         val authTokenForm = FormBody.Builder()

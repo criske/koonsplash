@@ -29,7 +29,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
-internal interface AuthCalls {
+interface AuthCalls {
 
     /**
      * Request authorization code.
@@ -42,7 +42,7 @@ internal interface AuthCalls {
      * @param scopes Scopes see AuthScope.
      * @return AuthorizationCode result.
      */
-    fun authorize(accessKey: String, redirectUri: URI, vararg scopes: AuthScope): Result<AuthorizationCode>
+    fun authorize(accessKey: AccessKey, redirectUri: URI, vararg scopes: AuthScope): Result<AuthorizationCode>
 
     /**
      * Intermediary step login form.
@@ -52,20 +52,9 @@ internal interface AuthCalls {
      * @param authenticityToken Csrf-token vouching for the form.
      * @param email User's email address.
      * @param password User's password.
-     * @return AuthenticityToken result on success.
-     */
-    fun loginForm(authenticityToken: AuthenticityToken, email: String, password: String): Result<AuthenticityToken>
-
-    /**
-     * Authorize form.
-     *
-     * @param authenticityToken Csrf-token vouching for the form.
-     * @param accessKey API accessKey.
-     * @param redirectUri Redirect Uri for authorization code.
-     * @param scopes Scopes see AuthScope.
      * @return AuthorizationCode result on success.
      */
-    fun authorizeForm(authenticityToken: AuthenticityToken, accessKey: String, redirectUri: URI, vararg scopes: AuthScope): Result<AuthorizationCode>
+    fun loginForm(authenticityToken: AuthenticityToken, email: String, password: String): Result<AuthorizationCode>
 
     /**
      * Final request for authentication token.
@@ -76,7 +65,12 @@ internal interface AuthCalls {
      * @param redirectUri A URI that handles creating a new installation-specific client_id (not used here) .
      * @return AuthToken on success.
      */
-    fun token(authorizationCode: AuthorizationCode, accessKey: String, secretKey: String, redirectUri: URI): Result<AuthToken>
+    fun token(
+        authorizationCode: AuthorizationCode,
+        accessKey: AccessKey,
+        secretKey: SecretKey,
+        redirectUri: URI
+    ): Result<AuthToken>
 }
 
 internal typealias AuthorizationCode = String
