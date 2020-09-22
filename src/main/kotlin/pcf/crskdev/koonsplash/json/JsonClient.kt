@@ -22,6 +22,7 @@
 package pcf.crskdev.koonsplash.json
 
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 /**
  * Json client based on Moshi.
@@ -29,5 +30,7 @@ import com.squareup.moshi.Moshi
  * @since 0.1
  */
 object JsonClient {
-    val json = Moshi.Builder().build()
+    val json = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
 }

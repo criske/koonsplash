@@ -31,8 +31,8 @@ import java.util.concurrent.TimeUnit
  * @author Cristian Pela
  * @since 0.1
  */
-internal class AuthorizationCodeServerImpl private constructor(override val callbackUri: URI) :
-    NanoHTTPD(callbackUri.host, callbackUri.port), AuthorizationCodeServer {
+internal class AuthCodeServerImpl(override val callbackUri: URI) :
+    NanoHTTPD(callbackUri.host, callbackUri.port), AuthCodeServer {
 
     override fun serve(session: IHTTPSession): Response {
         val code = session.parms["code"]

@@ -29,7 +29,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
-internal interface AuthorizationCodeServer {
+interface AuthCodeServer {
 
     /**
      * Callback uri
@@ -42,7 +42,7 @@ internal interface AuthorizationCodeServer {
      * @param timeoutSec Timeout in seconds.
      * @return True is server started.
      */
-    fun startServing(timeoutSec: Int): Boolean
+    fun startServing(timeoutSec: Int = 30): Boolean
 
     /**
      * Stop serving

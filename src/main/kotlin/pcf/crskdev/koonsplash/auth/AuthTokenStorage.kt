@@ -47,10 +47,10 @@ interface AuthTokenStorage {
 /**
  * Auth token.
  *
- * @property token Token itself.
+ * @property access_token Token itself.
  * @property type Type
- * @property refreshToken Refresh token used when this token expires.
- * @property createdAt Creation date.
+ * @property refresh_token Refresh token used when this token expires (probably not).
+ * @property created_at Creation date.
  * @constructor Create empty Auth token
  */
-data class AuthToken(val token: String, val type: String, val refreshToken: String, val createdAt: Long)
+data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)
