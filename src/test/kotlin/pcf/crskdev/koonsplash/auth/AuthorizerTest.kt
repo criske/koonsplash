@@ -380,7 +380,7 @@ private class TestLoginFormController(
     private var submitted = false
 
     init {
-        loginFormListener?.let { attachForm(it) }
+        loginFormListener?.let { attachFormListener(it) }
     }
 
     override fun activateForm() {

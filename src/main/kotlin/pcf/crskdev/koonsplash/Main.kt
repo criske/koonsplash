@@ -43,12 +43,17 @@ fun main() {
         override fun activateForm() {
             println("**Enter email:")
             val email = readLine()!!
-            println("**Enter password:")
-            val password = readLine()!!
-            this.submit(email, password)
+            if (email == "quit") {
+                this.giveUp()
+            } else {
+                println("**Enter password:")
+                val password = readLine()!!
+                this.submit(email, password)
+            }
+
         }
     }
-    loginFormController.attachForm(object : LoginFormListener {
+    loginFormController.attachFormListener(object : LoginFormListener {
         override fun onSuccess() {
             println("Login successful")
             executor.shutdownNow()
@@ -56,6 +61,11 @@ fun main() {
 
         override fun onFailure() {
             println("Login failure")
+        }
+
+        override fun onGiveUp() {
+            println("Gave up")
+            executor.shutdownNow()
         }
     })
 

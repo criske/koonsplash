@@ -48,7 +48,7 @@ abstract class LoginFormController {
      *
      * @param loginFormListener
      */
-    fun attachForm(loginFormListener: LoginFormListener) {
+    fun attachFormListener(loginFormListener: LoginFormListener) {
         this.loginFormListener = loginFormListener
     }
 
@@ -56,7 +56,7 @@ abstract class LoginFormController {
      * Detach form
      *
      */
-    fun detachForm() {
+    fun detachFormListener() {
         this.loginFormListener = null
     }
 
@@ -119,7 +119,7 @@ abstract class LoginFormController {
      *
      */
     internal fun detachAll() {
-        this.detachForm()
+        this.detachFormListener()
         this.loginFormSubmitter = null
     }
 
