@@ -50,7 +50,6 @@ fun main() {
                 val password = readLine()!!
                 this.submit(email, password)
             }
-
         }
     }
     loginFormController.attachFormListener(object : LoginFormListener {
