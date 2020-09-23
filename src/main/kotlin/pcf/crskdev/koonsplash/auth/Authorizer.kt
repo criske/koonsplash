@@ -84,22 +84,28 @@ class Authorizer(
                 .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC)
                 .onSuccess { code ->
                     authCalls.token(code, accessKey, secretKey, server.callbackUri)
-                        .onSuccess(onSuccessAndClose)
+                        .onSuccess { token ->
+                            storage.save(token)
+                            onSuccessAndClose(token)
+                        }
                         .onFailure { onErrorAndClose(it.message ?: "Unknown error: $it") }
                 }.onFailure { authorizeErr ->
                     if (authorizeErr is NeedsLogin) {
                         val loginFormSubmitter = object : LoginFormSubmitter {
+
                             override fun submit(email: String, password: String) {
                                 executor.execute {
                                     authCalls.loginForm(authorizeErr.authenticityToken, email, password)
                                         .onSuccess { code ->
                                             authCalls.token(code, accessKey, secretKey, server.callbackUri)
                                                 .onSuccess { token ->
-                                                    loginFormController.onLoginSuccess()
-                                                    storage.save(token)
                                                     onSuccessAndClose(token)
+                                                    loginFormController.onLoginSuccess()
+                                                    loginFormController.detachAll()
+                                                    storage.save(token)
                                                 }
                                                 .onFailure { tokenErr ->
+                                                    loginFormController.detachAll()
                                                     onErrorAndClose(tokenErr.message ?: "Unknown error: $tokenErr")
                                                 }
                                         }
@@ -108,15 +114,21 @@ class Authorizer(
                                                 loginFormController.onLoginFailure()
                                                 loginFormController.activateForm()
                                             } else {
+                                                loginFormController.detachAll()
                                                 onErrorAndClose(loginErr.message ?: "Unknown error: $loginErr")
                                             }
                                         }
                                 }
                             }
+
+                            override fun giveUp() {
+                                onErrorAndClose("Giving up on submitting credentials")
+                            }
                         }
                         loginFormController.attachFormSubmitter(loginFormSubmitter)
                         loginFormController.activateForm()
                     } else {
+                        loginFormController.detachAll()
                         onErrorAndClose(authorizeErr.message ?: "Unknown error: $authorizeErr")
                     }
                 }

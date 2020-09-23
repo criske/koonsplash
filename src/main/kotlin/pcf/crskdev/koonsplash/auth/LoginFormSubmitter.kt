@@ -36,4 +36,10 @@ interface LoginFormSubmitter {
      * @param password Password.
      */
     fun submit(email: String, password: String)
+
+    /**
+     * Give up submitting other credentials. This is internally called by LoginController.
+     *
+     */
+    fun giveUp()
 }

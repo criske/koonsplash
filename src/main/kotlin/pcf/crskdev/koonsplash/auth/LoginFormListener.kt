@@ -22,12 +22,12 @@
 package pcf.crskdev.koonsplash.auth
 
 /**
- * Login form called attached to LoginController.
+ * Login form listener attached to LoginController.
  *
  * @author Cristian Pela
  * @since 0.1
  */
-interface LoginForm {
+interface LoginFormListener {
 
     /**
      * Called on login success.
@@ -40,4 +40,10 @@ interface LoginForm {
      *
      */
     fun onFailure() { }
+
+    /**
+     * Called when user gives up on login in.
+     *
+     */
+    fun onGiveUp() { }
 }
