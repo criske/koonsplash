@@ -9,8 +9,8 @@ import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
 import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.InvalidCredentials
-import pcf.crskdev.koonsplash.auth.LoginForm
 import pcf.crskdev.koonsplash.auth.LoginFormController
+import pcf.crskdev.koonsplash.auth.LoginFormListener
 import pcf.crskdev.koonsplash.auth.NeedsLogin
 import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
@@ -20,7 +20,7 @@ fun main() {
 
     val storage = object : AuthTokenStorage {
         override fun save(token: AuthToken) {
-            println("Token is $token")
+            println("Saved Token $token")
         }
 
         override fun load(): AuthToken? = null
@@ -48,7 +48,7 @@ fun main() {
             this.submit(email, password)
         }
     }
-    loginFormController.attachForm(object : LoginForm {
+    loginFormController.attachForm(object : LoginFormListener {
         override fun onSuccess() {
             println("Login successful")
             executor.shutdownNow()
@@ -63,7 +63,7 @@ fun main() {
         executor,
         loginFormController,
         onError = { println(it) },
-        onSuccess = { println(it) }
+        onSuccess = { println("Authenticated Koonsplash $it") }
     )
 }
 

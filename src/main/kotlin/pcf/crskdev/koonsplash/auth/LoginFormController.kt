@@ -30,7 +30,7 @@ abstract class LoginFormController {
     /**
      * Login form.
      */
-    private var loginForm: LoginForm? = null
+    private var loginFormListener: LoginFormListener? = null
 
     /**
      * Login form submitter.
@@ -38,7 +38,7 @@ abstract class LoginFormController {
     private var loginFormSubmitter: LoginFormSubmitter? = null
 
     /**
-     * Activate the login form
+     * Activate the login form (as in showing the ui form).
      *
      */
     abstract fun activateForm()
@@ -46,10 +46,10 @@ abstract class LoginFormController {
     /**
      * Attach form.
      *
-     * @param loginForm
+     * @param loginFormListener
      */
-    fun attachForm(loginForm: LoginForm) {
-        this.loginForm = loginForm
+    fun attachForm(loginFormListener: LoginFormListener) {
+        this.loginFormListener = loginFormListener
     }
 
     /**
@@ -57,7 +57,7 @@ abstract class LoginFormController {
      *
      */
     fun detachForm() {
-        this.loginForm = null
+        this.loginFormListener = null
     }
 
     /**
@@ -65,39 +65,12 @@ abstract class LoginFormController {
      *
      * @param loginFormSubmitter
      */
-    fun attachFormSubmitter(loginFormSubmitter: LoginFormSubmitter) {
+    internal fun attachFormSubmitter(loginFormSubmitter: LoginFormSubmitter) {
         if (this.loginFormSubmitter == null) {
             this.loginFormSubmitter = loginFormSubmitter
         } else {
             println("Warning: LoginFormSubmitter already attached")
         }
-    }
-
-    /**
-     * Detach form submitter.
-     *
-     */
-    fun detachFormSubmitter() {
-        this.loginFormSubmitter = null
-    }
-
-    /**
-     * On login success.
-     *
-     * Note: is not called from main thread.
-     *
-     */
-    fun onLoginSuccess() {
-        this.loginForm?.onSuccess()
-    }
-
-    /**
-     * On login failure.
-     *
-     * Note: is not called from main thread.
-     */
-    fun onLoginFailure() {
-        this.loginForm?.onFailure()
     }
 
     /**
@@ -110,4 +83,49 @@ abstract class LoginFormController {
         requireNotNull(this.loginFormSubmitter)
         this.loginFormSubmitter?.submit(email, password)
     }
+
+    /**
+     * Give up on introducing credentials.
+     *
+     */
+    fun giveUp() {
+        requireNotNull(this.loginFormSubmitter)
+        this.loginFormListener?.onGiveUp()
+        this.loginFormSubmitter?.giveUp()
+        this.detachAll()
+    }
+
+    /**
+     * On login success.
+     *
+     * Note: is not called from main thread.
+     *
+     */
+    internal fun onLoginSuccess() {
+        this.loginFormListener?.onSuccess()
+    }
+
+    /**
+     * On login failure.
+     *
+     * Note: is not called from main thread.
+     */
+    internal fun onLoginFailure() {
+        this.loginFormListener?.onFailure()
+    }
+
+    /**
+     * Detach all components.
+     *
+     */
+    internal fun detachAll() {
+        this.detachForm()
+        this.loginFormSubmitter = null
+    }
+
+    /**
+     * Is detached from form listener and submitter.
+     *
+     */
+    fun isDetached() = loginFormListener == null && loginFormSubmitter == null
 }
