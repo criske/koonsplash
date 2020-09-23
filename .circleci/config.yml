@@ -51,4 +51,10 @@ jobs:
       - store_artifacts:
           path: ~/test-results/junit
 
-      - run: gradle jacocoTestCoverageVerification
+      #code coverage
+      - run:
+          name: Code coverage
+          command: gradle jacocoTestCoverageVerification
+      - store_artifacts:
+          path: /build/jacocoHtml/
+          destination: /code-coverage/
