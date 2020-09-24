@@ -28,6 +28,6 @@ package pcf.crskdev.koonsplash.auth
  * @since 0.1
  */
 interface ApiKeysLoader {
-    val accessKey: String
-    val secretKey: String
+    val accessKey: AccessKey
+    val secretKey: SecretKey
 }

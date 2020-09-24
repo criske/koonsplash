@@ -57,7 +57,7 @@ class Authorizer(
     fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
-        onError: (String) -> Unit,
+        onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     ) {
         val authToken = storage.load()
@@ -69,13 +69,13 @@ class Authorizer(
 
         val hasStarted = server.startServing()
         if (!hasStarted) {
-            onError("Auth code server hasn't started")
+            onError(IllegalStateException("Auth code server hasn't started"))
         }
         val onSuccessAndClose: (AuthToken) -> Unit = {
             server.stopServing()
             onSuccess(it)
         }
-        val onErrorAndClose: (String) -> Unit = {
+        val onErrorAndClose: (Throwable) -> Unit = {
             server.stopServing()
             onError(it)
         }
@@ -88,7 +88,7 @@ class Authorizer(
                             storage.save(token)
                             onSuccessAndClose(token)
                         }
-                        .onFailure { onErrorAndClose(it.message ?: "Unknown error: $it") }
+                        .onFailure { onErrorAndClose(it) }
                 }.onFailure { authorizeErr ->
                     if (authorizeErr is NeedsLogin) {
                         val loginFormSubmitter = object : LoginFormSubmitter {
@@ -106,7 +106,7 @@ class Authorizer(
                                                 }
                                                 .onFailure { tokenErr ->
                                                     loginFormController.detachAll()
-                                                    onErrorAndClose(tokenErr.message ?: "Unknown error: $tokenErr")
+                                                    onErrorAndClose(tokenErr)
                                                 }
                                         }
                                         .onFailure { loginErr ->
@@ -115,21 +115,21 @@ class Authorizer(
                                                 loginFormController.activateForm()
                                             } else {
                                                 loginFormController.detachAll()
-                                                onErrorAndClose(loginErr.message ?: "Unknown error: $loginErr")
+                                                onErrorAndClose(loginErr)
                                             }
                                         }
                                 }
                             }
 
                             override fun giveUp() {
-                                onErrorAndClose("Giving up on submitting credentials")
+                                onErrorAndClose(GiveUpException)
                             }
                         }
                         loginFormController.attachFormSubmitter(loginFormSubmitter)
                         loginFormController.activateForm()
                     } else {
                         loginFormController.detachAll()
-                        onErrorAndClose(authorizeErr.message ?: "Unknown error: $authorizeErr")
+                        onErrorAndClose(authorizeErr)
                     }
                 }
         }
@@ -138,3 +138,5 @@ class Authorizer(
 
 typealias AccessKey = String
 typealias SecretKey = String
+
+object GiveUpException : RuntimeException()

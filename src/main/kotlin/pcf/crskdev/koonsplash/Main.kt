@@ -1,21 +1,25 @@
 package pcf.crskdev.koonsplash
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthCalls
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
-import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.InvalidCredentials
-import pcf.crskdev.koonsplash.auth.LoginFormController
-import pcf.crskdev.koonsplash.auth.LoginFormListener
 import pcf.crskdev.koonsplash.auth.NeedsLogin
 import pcf.crskdev.koonsplash.auth.SecretKey
+import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashImpl
+import pcf.crskdev.koonsplash.json.JsonClient
 import java.net.URI
-import java.util.concurrent.Executors
 
+@ExperimentalStdlibApi
 fun main() {
 
     val storage = object : AuthTokenStorage {
@@ -24,56 +28,23 @@ fun main() {
         }
 
         override fun load(): AuthToken? = null
+        override fun clear() {}
     }
-    val accessKey = System.getenv("access_key")
-    val secretKey = System.getenv("secret_key")
-    // val email = System.getenv("email")
-    // val password = System.getenv("password")
 
-    val authorizer = Authorizer(
-        accessKey,
-        secretKey,
-        authCalls = DummyAuthCalls,
-        storage = storage
-    )
+    val keysLoader = object : ApiKeysLoader {
+        override val accessKey: AccessKey = System.getenv("access_key")
+        override val secretKey: SecretKey = System.getenv("secret_key")
+    }
 
-    val executor = Executors.newSingleThreadExecutor()
-
-    val loginFormController = object : LoginFormController() {
-        override fun activateForm() {
-            println("**Enter email:")
-            val email = readLine()!!
-            if (email == "quit") {
-                this.giveUp()
-            } else {
-                println("**Enter password:")
-                val password = readLine()!!
-                this.submit(email, password)
-            }
+    runBlocking {
+        withContext(Dispatchers.IO) {
+            KoonsplashImpl(keysLoader, storage, HttpClient.http, JsonClient.json)
+                .authenticated(
+                    System.getenv("email"),
+                    System.getenv("password")
+                )
         }
     }
-    loginFormController.attachFormListener(object : LoginFormListener {
-        override fun onSuccess() {
-            println("Login successful")
-            executor.shutdownNow()
-        }
-
-        override fun onFailure() {
-            println("Login failure")
-        }
-
-        override fun onGiveUp() {
-            println("Gave up")
-            executor.shutdownNow()
-        }
-    })
-
-    authorizer.authorize(
-        executor,
-        loginFormController,
-        onError = { println(it) },
-        onSuccess = { println("Authenticated Koonsplash $it") }
-    )
 }
 
 object DummyAuthCalls : AuthCalls {

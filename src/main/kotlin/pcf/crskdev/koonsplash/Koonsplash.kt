@@ -19,44 +19,54 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.auth
+package pcf.crskdev.koonsplash
+
+import kotlinx.coroutines.coroutineScope
+import pcf.crskdev.koonsplash.api.Api
+import pcf.crskdev.koonsplash.api.ApiAuth
+import pcf.crskdev.koonsplash.auth.LoginFormController
+import pcf.crskdev.koonsplash.auth.OneShotLoginFormController
 
 /**
- * Auth token storage
+ * Koonsplash entry point.
  *
  * @author Cristian Pela
  * @since 0.1
  */
-interface AuthTokenStorage {
+interface Koonsplash {
 
     /**
-     * Save token.
-     *
-     * @param token
+     * Api
      */
-    fun save(token: AuthToken)
+    val api: Api
 
     /**
-     * Load token or null if not found.
+     * Tries to authenticate by interacting with a [LoginFormController].
      *
-     * @return AuthToken?
+     * @param controller Controller
+     * @return [Koonsplash.Auth]
      */
-    fun load(): AuthToken?
+    suspend fun authenticated(controller: LoginFormController): Auth
 
     /**
-     * Removes the token from storage.
+     * One shot authentication.
+     *
+     * @param email Email
+     * @param password Password
+     * @return [Koonsplash.Auth]
+     */
+    suspend fun authenticated(email: String, password: String): Auth = coroutineScope {
+        authenticated(OneShotLoginFormController(email, password))
+    }
+
+    /**
+     * Koonsplash entry point for authenticated requests.
      *
      */
-    fun clear()
+    interface Auth {
+
+        val api: ApiAuth
+
+        suspend fun signOut(): Koonsplash
+    }
 }
-
-/**
- * Auth token.
- *
- * @property access_token Token itself.
- * @property type Type
- * @property refresh_token Refresh token used when this token expires (probably not).
- * @property created_at Creation date.
- * @constructor Create empty Auth token
- */
-data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)
