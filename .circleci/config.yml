@@ -52,9 +52,9 @@ jobs:
           path: ~/test-results/junit
 
       #code coverage
-      - run:
-          name: Code coverage
-          command: mkdir -p ~/code-coverage/ && gradle jacocoTestCoverageVerification
-      - store_artifacts:
-          path: /build/jacocoHtml/
-          destination: ~/code-coverage/
+#      - run:
+#          name: Code coverage
+#          command: mkdir -p ~/code-coverage/ && gradle jacocoTestCoverageVerification
+#      - store_artifacts:
+#          path: /build/jacocoHtml/
+#          destination: ~/code-coverage/
