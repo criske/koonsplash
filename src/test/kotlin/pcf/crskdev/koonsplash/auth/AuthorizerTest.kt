@@ -45,7 +45,7 @@ internal class AuthorizerTest : StringSpec({
         val controller = TestLoginFormController(null, "foo@mail.com", "123")
         val authCalls = mockk<AuthCalls>()
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -81,7 +81,7 @@ internal class AuthorizerTest : StringSpec({
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -119,7 +119,7 @@ internal class AuthorizerTest : StringSpec({
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -158,7 +158,7 @@ internal class AuthorizerTest : StringSpec({
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -203,7 +203,7 @@ internal class AuthorizerTest : StringSpec({
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -246,7 +246,7 @@ internal class AuthorizerTest : StringSpec({
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",
@@ -290,7 +290,7 @@ internal class AuthorizerTest : StringSpec({
             Result.failure(IOException())
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(String) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
         val authorizer = Authorizer(
             "access123",
             "secret123",

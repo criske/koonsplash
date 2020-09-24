@@ -19,44 +19,36 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.auth
+package pcf.crskdev.koonsplash.internal
+
+import com.squareup.moshi.Moshi
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import pcf.crskdev.koonsplash.Koonsplash
+import pcf.crskdev.koonsplash.api.ApiAuth
+import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthToken
+import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 
 /**
- * Auth token storage
+ * Koonsplash auth impl.
  *
- * @author Cristian Pela
- * @since 0.1
+ * @constructor Create empty Koonsplash auth impl
  */
-interface AuthTokenStorage {
+internal class KoonsplashAuthImpl(
+    private val authToken: AuthToken,
+    private val accessKey: AccessKey,
+    private val parent: Koonsplash,
+    private val storage: AuthTokenStorage,
+    private val httpClient: OkHttpClient,
+    private val jsonClient: Moshi,
+) : Koonsplash.Auth {
 
-    /**
-     * Save token.
-     *
-     * @param token
-     */
-    fun save(token: AuthToken)
+    override val api: ApiAuth = object : ApiAuth {}
 
-    /**
-     * Load token or null if not found.
-     *
-     * @return AuthToken?
-     */
-    fun load(): AuthToken?
-
-    /**
-     * Removes the token from storage.
-     *
-     */
-    fun clear()
+    override suspend fun signOut(): Koonsplash = coroutineScope {
+        launch { storage.clear() }
+        parent
+    }
 }
-
-/**
- * Auth token.
- *
- * @property access_token Token itself.
- * @property type Type
- * @property refresh_token Refresh token used when this token expires (probably not).
- * @property created_at Creation date.
- * @constructor Create empty Auth token
- */
-data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)

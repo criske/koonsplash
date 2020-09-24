@@ -21,42 +21,33 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 /**
- * Auth token storage
+ * One shot login form controller, that doesn't interact with an external interface.
+ *
+ * It submits credentials once and then gives up.
  *
  * @author Cristian Pela
  * @since 0.1
+ * @param email Email
+ * @param password Password
  */
-interface AuthTokenStorage {
+internal class OneShotLoginFormController(
+    private val email: String,
+    private val password: String
+) : LoginFormController() {
 
     /**
-     * Save token.
-     *
-     * @param token
+     * Is submitted.
      */
-    fun save(token: AuthToken)
+    private val isSubmitted = AtomicBoolean(false)
 
-    /**
-     * Load token or null if not found.
-     *
-     * @return AuthToken?
-     */
-    fun load(): AuthToken?
-
-    /**
-     * Removes the token from storage.
-     *
-     */
-    fun clear()
+    override fun activateForm() {
+        if (isSubmitted.compareAndSet(false, true)) {
+            this.submit(email, password)
+        } else {
+            this.giveUp()
+        }
+    }
 }
-
-/**
- * Auth token.
- *
- * @property access_token Token itself.
- * @property type Type
- * @property refresh_token Refresh token used when this token expires (probably not).
- * @property created_at Creation date.
- * @constructor Create empty Auth token
- */
-data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)

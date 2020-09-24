@@ -19,44 +19,12 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.auth
+package pcf.crskdev.koonsplash.api
 
 /**
- * Auth token storage
+ * Api endpoints.
  *
  * @author Cristian Pela
  * @since 0.1
  */
-interface AuthTokenStorage {
-
-    /**
-     * Save token.
-     *
-     * @param token
-     */
-    fun save(token: AuthToken)
-
-    /**
-     * Load token or null if not found.
-     *
-     * @return AuthToken?
-     */
-    fun load(): AuthToken?
-
-    /**
-     * Removes the token from storage.
-     *
-     */
-    fun clear()
-}
-
-/**
- * Auth token.
- *
- * @property access_token Token itself.
- * @property type Type
- * @property refresh_token Refresh token used when this token expires (probably not).
- * @property created_at Creation date.
- * @constructor Create empty Auth token
- */
-data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)
+interface Api
