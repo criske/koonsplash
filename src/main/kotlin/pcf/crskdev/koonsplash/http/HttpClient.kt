@@ -23,6 +23,9 @@ package pcf.crskdev.koonsplash.http
 
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
+import okhttp3.Response
+import pcf.crskdev.koonsplash.json.JsonClient
+import java.io.IOException
 import java.net.CookieManager
 import java.net.CookiePolicy
 
@@ -39,4 +42,18 @@ object HttpClient {
             )
         )
         .build()
+
+    inline fun <reified T> Response.jsonBody(): T {
+        val isJson = this.body
+            ?.contentType()
+            ?.subtype
+            ?.equals("json", true) == true
+        return if (isJson) {
+            this.body?.charStream()
+                ?.let { JsonClient.json.fromJson(it, T::class.java) }
+                ?: throw IOException("Body is empty")
+        } else {
+            throw IOException("Content Type is not json")
+        }
+    }
 }

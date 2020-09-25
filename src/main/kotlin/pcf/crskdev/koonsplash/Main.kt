@@ -16,7 +16,6 @@ import pcf.crskdev.koonsplash.auth.NeedsLogin
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
-import pcf.crskdev.koonsplash.json.JsonClient
 import java.net.URI
 
 @ExperimentalStdlibApi
@@ -38,7 +37,7 @@ fun main() {
 
     runBlocking {
         withContext(Dispatchers.IO) {
-            KoonsplashImpl(keysLoader, storage, HttpClient.http, JsonClient.json)
+            KoonsplashImpl(keysLoader, storage, HttpClient.http)
                 .authenticated(
                     System.getenv("email"),
                     System.getenv("password")
