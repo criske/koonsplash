@@ -89,7 +89,7 @@ class Authorizer(
                         }
                         .onFailure { onErrorAndClose(it) }
                 }.onFailure { authorizeErr ->
-                    if (authorizeErr is NeedsLogin) {
+                    if (authorizeErr is NeedsLoginException) {
                         val loginFormSubmitter = object : LoginFormSubmitter {
 
                             override fun submit(email: String, password: String) {
@@ -109,7 +109,7 @@ class Authorizer(
                                                 }
                                         }
                                         .onFailure { loginErr ->
-                                            if (loginErr is InvalidCredentials) {
+                                            if (loginErr is InvalidCredentialsException) {
                                                 loginFormController.onLoginFailure()
                                                 loginFormController.activateForm()
                                             } else {
@@ -134,8 +134,3 @@ class Authorizer(
         }
     }
 }
-
-typealias AccessKey = String
-typealias SecretKey = String
-
-object GiveUpException : RuntimeException()

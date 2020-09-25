@@ -72,9 +72,3 @@ interface AuthCalls {
         redirectUri: URI
     ): Result<AuthToken>
 }
-
-typealias AuthorizationCode = String
-typealias AuthenticityToken = String
-
-class NeedsLogin(val authenticityToken: AuthenticityToken) : RuntimeException()
-object InvalidCredentials : RuntimeException()
