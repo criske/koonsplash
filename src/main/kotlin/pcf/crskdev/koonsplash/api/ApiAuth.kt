@@ -27,4 +27,7 @@ package pcf.crskdev.koonsplash.api
  * @author Cristian Pela
  * @since 0.1
  */
-interface ApiAuth : Api
+interface ApiAuth : Api {
+
+    suspend fun me()
+}
