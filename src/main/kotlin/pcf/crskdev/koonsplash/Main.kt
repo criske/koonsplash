@@ -11,8 +11,8 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
-import pcf.crskdev.koonsplash.auth.InvalidCredentials
-import pcf.crskdev.koonsplash.auth.NeedsLogin
+import pcf.crskdev.koonsplash.auth.InvalidCredentialsException
+import pcf.crskdev.koonsplash.auth.NeedsLoginException
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
@@ -52,7 +52,7 @@ object DummyAuthCalls : AuthCalls {
         accessKey: AccessKey,
         redirectUri: URI,
         vararg scopes: AuthScope
-    ): Result<AuthorizationCode> = Result.failure(NeedsLogin("1234"))
+    ): Result<AuthorizationCode> = Result.failure(NeedsLoginException("1234"))
 
     override fun loginForm(
         authenticityToken: AuthenticityToken,
@@ -62,7 +62,7 @@ object DummyAuthCalls : AuthCalls {
         return if (email == "foo@gmail.com" && password == "123") {
             Result.success("123code")
         } else {
-            Result.failure(InvalidCredentials)
+            Result.failure(InvalidCredentialsException)
         }
     }
 

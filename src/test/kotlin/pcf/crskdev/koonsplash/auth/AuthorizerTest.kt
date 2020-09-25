@@ -114,7 +114,7 @@ internal class AuthorizerTest : StringSpec({
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
-            Result.failure(NeedsLogin("csrf")),
+            Result.failure(NeedsLoginException("csrf")),
             Result.success("code123"),
             Result.success(authToken)
         )
@@ -153,8 +153,8 @@ internal class AuthorizerTest : StringSpec({
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
-            Result.failure(NeedsLogin("csrf")),
-            Result.failure(InvalidCredentials),
+            Result.failure(NeedsLoginException("csrf")),
+            Result.failure(InvalidCredentialsException),
             Result.success(authToken)
         )
         val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
@@ -241,7 +241,7 @@ internal class AuthorizerTest : StringSpec({
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
-            Result.failure(NeedsLogin("csrf")),
+            Result.failure(NeedsLoginException("csrf")),
             Result.failure(IOException()),
             Result.success(authToken)
         )
@@ -285,7 +285,7 @@ internal class AuthorizerTest : StringSpec({
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
-            Result.failure(NeedsLogin("csrf")),
+            Result.failure(NeedsLoginException("csrf")),
             Result.success("code123"),
             Result.failure(IOException())
         )

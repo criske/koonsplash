@@ -72,7 +72,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             val authenticityToken = this.extractAuthenticityToken(document)
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
-                ?: Result.failure(NeedsLogin(authenticityToken))
+                ?: Result.failure(NeedsLoginException(authenticityToken))
         }
     }
 
@@ -97,7 +97,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             val document = Jsoup.parse(response.body?.string())
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
-                ?: Result.failure(InvalidCredentials)
+                ?: Result.failure(InvalidCredentialsException)
         }
     }
 
