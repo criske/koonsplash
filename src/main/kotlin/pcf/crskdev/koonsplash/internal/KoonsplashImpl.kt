@@ -29,7 +29,7 @@ import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
-import pcf.crskdev.koonsplash.auth.Authorizer
+import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.LoginFormController
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -52,7 +52,7 @@ class KoonsplashImpl(
 
     override val api: Api = object : Api {}
 
-    private val authorizer = Authorizer(
+    private val authorizer = AuthorizerImpl(
         keys.accessKey,
         keys.secretKey,
         storage = storage
