@@ -30,7 +30,7 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent.Executor
 
-internal class AuthorizerTest : StringSpec({
+internal class AuthorizerImplTest : StringSpec({
 
     val authToken = AuthToken(
         "token123",
@@ -39,40 +39,7 @@ internal class AuthorizerTest : StringSpec({
         1
     )
 
-    "should get token from storage" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
-        val server = mockk<AuthCodeServer>(relaxed = true)
-        val controller = TestLoginFormController(null, "foo@mail.com", "123")
-        val authCalls = mockk<AuthCalls>()
-        val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
-        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
-        val authorizer = AuthorizerImpl(
-            "access123",
-            "secret123",
-            server,
-            authCalls,
-            storage
-        )
-
-        every { storage.load() } returns authToken
-
-        authorizer.authorize(TestExecutor, controller, onFailure, onSuccess)
-
-        verify(exactly = 0) {
-            server.startServing()
-            server.stopServing()
-            storage.save(any())
-            onFailure(any())
-        }
-        verify {
-            onSuccess(authToken)
-        }
-
-        controller.isDetached() shouldBe true
-    }
-
     "should get token without login" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val controller = TestLoginFormController(null, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
@@ -86,11 +53,9 @@ internal class AuthorizerTest : StringSpec({
             "access123",
             "secret123",
             server,
-            authCalls,
-            storage
+            authCalls
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -98,7 +63,6 @@ internal class AuthorizerTest : StringSpec({
 
         verify {
             onSuccess(authToken)
-            storage.save(authToken)
             server.stopServing()
         }
 
@@ -109,7 +73,6 @@ internal class AuthorizerTest : StringSpec({
     }
 
     "should get token with log in" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
@@ -125,10 +88,8 @@ internal class AuthorizerTest : StringSpec({
             "secret123",
             server,
             authCalls,
-            storage
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -137,7 +98,6 @@ internal class AuthorizerTest : StringSpec({
         verify {
             onSuccess(authToken)
             loginForm.onSuccess()
-            storage.save(authToken)
             server.stopServing()
         }
 
@@ -148,7 +108,6 @@ internal class AuthorizerTest : StringSpec({
     }
 
     "should fail login due to invalid credentials" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
@@ -164,10 +123,8 @@ internal class AuthorizerTest : StringSpec({
             "secret123",
             server,
             authCalls,
-            storage
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -175,7 +132,6 @@ internal class AuthorizerTest : StringSpec({
 
         verify(exactly = 0) {
             loginForm.onSuccess()
-            storage.save(any())
             onSuccess(any())
         }
 
@@ -193,7 +149,6 @@ internal class AuthorizerTest : StringSpec({
     }
 
     "should call onFailure if something occurs on authorize" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
@@ -209,10 +164,8 @@ internal class AuthorizerTest : StringSpec({
             "secret123",
             server,
             authCalls,
-            storage
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -222,7 +175,6 @@ internal class AuthorizerTest : StringSpec({
             onSuccess(any())
             loginForm.onSuccess()
             loginForm.onFailure()
-            storage.save(any())
         }
 
         verify {
@@ -236,7 +188,6 @@ internal class AuthorizerTest : StringSpec({
     }
 
     "should call onFailure if something occurs on login" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
@@ -252,10 +203,8 @@ internal class AuthorizerTest : StringSpec({
             "secret123",
             server,
             authCalls,
-            storage
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -265,7 +214,6 @@ internal class AuthorizerTest : StringSpec({
             onSuccess(any())
             loginForm.onSuccess()
             loginForm.onFailure()
-            storage.save(any())
         }
 
         verify {
@@ -280,7 +228,6 @@ internal class AuthorizerTest : StringSpec({
     }
 
     "should call onFailure if something occurs on token" {
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
         val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
@@ -296,10 +243,8 @@ internal class AuthorizerTest : StringSpec({
             "secret123",
             server,
             authCalls,
-            storage
         )
 
-        every { storage.load() } returns null
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
@@ -309,7 +254,6 @@ internal class AuthorizerTest : StringSpec({
             onSuccess(any())
             loginForm.onSuccess()
             loginForm.onFailure()
-            storage.save(any())
         }
 
         verify {
