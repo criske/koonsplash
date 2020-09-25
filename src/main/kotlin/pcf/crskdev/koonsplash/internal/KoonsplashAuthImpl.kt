@@ -21,7 +21,6 @@
 
 package pcf.crskdev.koonsplash.internal
 
-import com.google.gson.Gson
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -40,7 +39,6 @@ internal class KoonsplashAuthImpl(
     private val parent: Koonsplash,
     private val storage: AuthTokenStorage,
     private val httpClient: OkHttpClient,
-    private val jsonClient: Gson,
 ) : Koonsplash.Auth {
 
     override val api: ApiAuth = object : ApiAuth {}

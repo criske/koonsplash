@@ -21,7 +21,6 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import com.google.gson.Gson
 import okhttp3.CacheControl
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -30,6 +29,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
 import java.io.IOException
 import java.net.URI
 
@@ -38,11 +38,9 @@ import java.net.URI
  *
  * @author Cristian Pela
  * @since 0.1
+ * @param httpClient Http client
  */
-internal class AuthCallsImpl(
-    private val httpClient: OkHttpClient,
-    private val json: Gson
-) : AuthCalls {
+internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
 
     private val baseAuthHttpUrl = HttpUrl.Builder()
         .host("unsplash.com")
@@ -123,9 +121,7 @@ internal class AuthCallsImpl(
             .build()
         val response = httpClient.newCall(request).execute()
         return tryResult(response) {
-            val bodyString = response.body?.string() ?: ""
-            val authToken = json.fromJson(bodyString, AuthToken::class.java)
-            Result.success(authToken)
+            Result.success(response.jsonBody())
         }
     }
 

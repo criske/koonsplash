@@ -22,7 +22,6 @@
 package pcf.crskdev.koonsplash.auth
 
 import pcf.crskdev.koonsplash.http.HttpClient
-import pcf.crskdev.koonsplash.json.JsonClient
 import java.net.URI
 import java.util.concurrent.Executor
 
@@ -39,7 +38,7 @@ class Authorizer(
     private val accessKey: AccessKey,
     private val secretKey: SecretKey,
     private val server: AuthCodeServer = AuthCodeServerImpl(URI.create("http://localhost:3000")),
-    private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http, JsonClient.json),
+    private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http),
     private val storage: AuthTokenStorage,
 ) {
 
