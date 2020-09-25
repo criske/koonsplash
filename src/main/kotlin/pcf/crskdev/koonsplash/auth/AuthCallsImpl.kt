@@ -21,7 +21,7 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import com.squareup.moshi.Moshi
+import com.google.gson.Gson
 import okhttp3.CacheControl
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -41,7 +41,7 @@ import java.net.URI
  */
 internal class AuthCallsImpl(
     private val httpClient: OkHttpClient,
-    private val moshi: Moshi
+    private val json: Gson
 ) : AuthCalls {
 
     private val baseAuthHttpUrl = HttpUrl.Builder()
@@ -124,11 +124,8 @@ internal class AuthCallsImpl(
         val response = httpClient.newCall(request).execute()
         return tryResult(response) {
             val bodyString = response.body?.string() ?: ""
-            moshi
-                .adapter(AuthToken::class.java)
-                .fromJson(bodyString)?.let {
-                    Result.success(it)
-                } ?: Result.failure(IllegalStateException("Could not parse auth-token from $bodyString"))
+            val authToken = json.fromJson(bodyString, AuthToken::class.java)
+            Result.success(authToken)
         }
     }
 
