@@ -11,6 +11,7 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
+import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.InvalidCredentialsException
 import pcf.crskdev.koonsplash.auth.NeedsLoginException
 import pcf.crskdev.koonsplash.auth.SecretKey
@@ -35,9 +36,11 @@ fun main() {
         override val secretKey: SecretKey = System.getenv("secret_key")
     }
 
+    val authorizer = AuthorizerImpl(keysLoader.accessKey, keysLoader.secretKey)
+
     runBlocking {
         withContext(Dispatchers.IO) {
-            KoonsplashImpl(keysLoader, storage, HttpClient.http)
+            KoonsplashImpl(keysLoader.accessKey, storage, HttpClient.http, authorizer)
                 .authenticated(
                     System.getenv("email"),
                     System.getenv("password")

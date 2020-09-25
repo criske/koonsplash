@@ -27,9 +27,9 @@ import kotlinx.coroutines.coroutineScope
 import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
-import pcf.crskdev.koonsplash.auth.ApiKeysLoader
+import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
-import pcf.crskdev.koonsplash.auth.AuthorizerImpl
+import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.LoginFormController
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -45,14 +45,13 @@ import kotlin.coroutines.suspendCoroutine
  */
 @ExperimentalStdlibApi
 class KoonsplashImpl(
-    private val keys: ApiKeysLoader,
+    private val accessKey: AccessKey,
     private val storage: AuthTokenStorage,
     private val httpClient: OkHttpClient,
+    private val authorizer: Authorizer
 ) : Koonsplash {
 
     override val api: Api = object : Api {}
-
-    private val authorizer = AuthorizerImpl(keys.accessKey, keys.secretKey)
 
     override suspend fun authenticated(controller: LoginFormController): Koonsplash.Auth = coroutineScope {
         val authToken = storage.load()
@@ -67,13 +66,13 @@ class KoonsplashImpl(
                     { cont.resumeWithException(it) },
                     {
                         cont.resume(
-                            KoonsplashAuthImpl(it, keys.accessKey, this@KoonsplashImpl, storage, httpClient)
+                            KoonsplashAuthImpl(it, accessKey, this@KoonsplashImpl, storage, httpClient)
                         )
                     }
                 )
             }
         } else {
-            KoonsplashAuthImpl(authToken, keys.accessKey, this@KoonsplashImpl, storage, httpClient)
+            KoonsplashAuthImpl(authToken, accessKey, this@KoonsplashImpl, storage, httpClient)
         }
     }
 }
