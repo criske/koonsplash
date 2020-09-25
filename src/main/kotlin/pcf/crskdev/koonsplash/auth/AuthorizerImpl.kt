@@ -71,7 +71,7 @@ internal class AuthorizerImpl(
         }
         executor.execute {
             authCalls
-                .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC)
+                .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC, AuthScope.READ_USER)
                 .onSuccess { code ->
                     authCalls.token(code, accessKey, secretKey, server.callbackUri)
                         .onSuccess(onSuccessAndClose)

@@ -21,52 +21,40 @@
 
 package pcf.crskdev.koonsplash.internal
 
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runBlockingTest
 import pcf.crskdev.koonsplash.Koonsplash
-import pcf.crskdev.koonsplash.api.ApiAuth
-import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.SignedOutException
-import java.util.concurrent.atomic.AtomicReference
+import pcf.crskdev.koonsplash.http.HttpClient
 
-/**
- * Koonsplash auth implementation.
- */
-internal class KoonsplashAuthImpl(
-    private val authToken: AuthToken,
-    private val accessKey: AccessKey,
-    private val public: Koonsplash,
-    private val storage: AuthTokenStorage,
-    private val httpClient: OkHttpClient,
-) : Koonsplash.Auth {
+@ExperimentalCoroutinesApi
+internal class KoonsplashAuthImplTest : StringSpec({
 
-    /**
-     * Real api.
-     */
-    private val realApi = object : ApiAuth {
-        override suspend fun me() {}
-    }
-
-    /**
-     * Keeps reference of the current api (real or signed out)
-     */
-    private val apiAuthRef: AtomicReference<ApiAuth> = AtomicReference(realApi)
-
-    override val api: ApiAuth get() = apiAuthRef.get()
-
-    override suspend fun signOut(): Koonsplash = coroutineScope {
-        launch { storage.clear() }
-        // switch to signed out api to prevent calls to real api.
-        apiAuthRef.compareAndSet(realApi, ApiAuthSignedOut)
-        public
-    }
-
-    internal object ApiAuthSignedOut : ApiAuth {
-        override suspend fun me() {
-            throw SignedOutException
+    "should not allow calling api after sign out" {
+        val storage = mockk<AuthTokenStorage>(relaxed = true)
+        val public = mockk<Koonsplash>()
+        val koonsplash = KoonsplashAuthImpl(
+            AuthToken("", "", "", 0),
+            "key",
+            public,
+            storage,
+            HttpClient.http
+        )
+        runBlockingTest {
+            koonsplash.api.me()
+            val backToPublic = koonsplash.signOut()
+            verify { storage.clear() }
+            backToPublic shouldBeSameInstanceAs public
+            shouldThrow<SignedOutException> {
+                koonsplash.api.me()
+            }
         }
     }
-}
+})
