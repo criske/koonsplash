@@ -52,33 +52,28 @@ class KoonsplashImpl(
 
     override val api: Api = object : Api {}
 
-    private val authorizer = AuthorizerImpl(
-        keys.accessKey,
-        keys.secretKey,
-        storage = storage
-    )
+    private val authorizer = AuthorizerImpl(keys.accessKey, keys.secretKey)
 
     override suspend fun authenticated(controller: LoginFormController): Koonsplash.Auth = coroutineScope {
-        val dispatcher = coroutineContext[CoroutineDispatcher]
-        requireNotNull(dispatcher)
-        val executor = dispatcher.asExecutor()
-        suspendCoroutine { cont ->
-            authorizer.authorize(
-                executor,
-                controller,
-                { cont.resumeWithException(it) },
-                {
-                    cont.resume(
-                        KoonsplashAuthImpl(
-                            it,
-                            keys.accessKey,
-                            this@KoonsplashImpl,
-                            storage,
-                            httpClient
+        val authToken = storage.load()
+        if (authToken == null) {
+            val dispatcher = coroutineContext[CoroutineDispatcher]
+            requireNotNull(dispatcher)
+            val executor = dispatcher.asExecutor()
+            suspendCoroutine { cont ->
+                authorizer.authorize(
+                    executor,
+                    controller,
+                    { cont.resumeWithException(it) },
+                    {
+                        cont.resume(
+                            KoonsplashAuthImpl(it, keys.accessKey, this@KoonsplashImpl, storage, httpClient)
                         )
-                    )
-                }
-            )
+                    }
+                )
+            }
+        } else {
+            KoonsplashAuthImpl(authToken, keys.accessKey, this@KoonsplashImpl, storage, httpClient)
         }
     }
 }

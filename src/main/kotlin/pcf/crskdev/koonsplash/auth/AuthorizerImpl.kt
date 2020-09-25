@@ -32,14 +32,12 @@ import java.util.concurrent.Executor
  * @property secretKey Secret key.
  * @property server Authorize code callback server.
  * @property authCalls Authorization flow calls abstraction.
- * @property storage AuthToken storage.
  */
 internal class AuthorizerImpl(
     private val accessKey: AccessKey,
     private val secretKey: SecretKey,
     private val server: AuthCodeServer = AuthCodeServerImpl(URI.create("http://localhost:3000")),
-    private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http),
-    private val storage: AuthTokenStorage,
+    private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http)
 ) : Authorizer {
 
     /**
@@ -59,13 +57,6 @@ internal class AuthorizerImpl(
         onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     ) {
-        val authToken = storage.load()
-        if (authToken != null) {
-            // token already saved, is safe to return
-            onSuccess(authToken)
-            return
-        }
-
         val hasStarted = server.startServing()
         if (!hasStarted) {
             onError(IllegalStateException("Auth code server hasn't started"))
@@ -83,10 +74,7 @@ internal class AuthorizerImpl(
                 .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC)
                 .onSuccess { code ->
                     authCalls.token(code, accessKey, secretKey, server.callbackUri)
-                        .onSuccess { token ->
-                            storage.save(token)
-                            onSuccessAndClose(token)
-                        }
+                        .onSuccess(onSuccessAndClose)
                         .onFailure { onErrorAndClose(it) }
                 }.onFailure { authorizeErr ->
                     if (authorizeErr is NeedsLoginException) {
@@ -101,7 +89,6 @@ internal class AuthorizerImpl(
                                                     onSuccessAndClose(token)
                                                     loginFormController.onLoginSuccess()
                                                     loginFormController.detachAll()
-                                                    storage.save(token)
                                                 }
                                                 .onFailure { tokenErr ->
                                                     loginFormController.detachAll()
