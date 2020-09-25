@@ -26,7 +26,7 @@ import java.net.URI
 import java.util.concurrent.Executor
 
 /**
- * Authorizer for authenticated API requests.
+ * Authorizer implementation for authenticated API requests.
  *
  * @property accessKey Access key.
  * @property secretKey Secret key.
@@ -40,7 +40,7 @@ class Authorizer(
     private val server: AuthCodeServer = AuthCodeServerImpl(URI.create("http://localhost:3000")),
     private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http),
     private val storage: AuthTokenStorage,
-) {
+) : IAuthorizer {
 
     /**
      * OAuth2 authorization flow done in background thread provided by executor.
@@ -53,7 +53,7 @@ class Authorizer(
      * @receiver onError receives the error message.
      * @receiver onSuccess receives the AuthToken.
      */
-    fun authorize(
+    override fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
         onError: (Throwable) -> Unit,
