@@ -21,7 +21,7 @@
 
 package pcf.crskdev.koonsplash.internal
 
-import com.squareup.moshi.Moshi
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.coroutineScope
@@ -49,7 +49,7 @@ class KoonsplashImpl(
     private val keys: ApiKeysLoader,
     private val storage: AuthTokenStorage,
     private val httpClient: OkHttpClient,
-    private val jsonClient: Moshi
+    private val jsonClient: Gson
 ) : Koonsplash {
 
     override val api: Api = object : Api {}

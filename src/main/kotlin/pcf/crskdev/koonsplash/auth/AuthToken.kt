@@ -19,34 +19,15 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.internal
-
-import com.google.gson.Gson
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import pcf.crskdev.koonsplash.Koonsplash
-import pcf.crskdev.koonsplash.api.ApiAuth
-import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthToken
-import pcf.crskdev.koonsplash.auth.AuthTokenStorage
+package pcf.crskdev.koonsplash.auth
 
 /**
- * Koonsplash auth implementation.
+ * Auth token.
+ *
+ * @property accessToken Token itself.
+ * @property type Type
+ * @property refreshToken Refresh token used when this token expires (probably not).
+ * @property createdAt Creation date.
+ * @constructor Create empty Auth token
  */
-internal class KoonsplashAuthImpl(
-    private val authToken: AuthToken,
-    private val accessKey: AccessKey,
-    private val parent: Koonsplash,
-    private val storage: AuthTokenStorage,
-    private val httpClient: OkHttpClient,
-    private val jsonClient: Gson,
-) : Koonsplash.Auth {
-
-    override val api: ApiAuth = object : ApiAuth {}
-
-    override suspend fun signOut(): Koonsplash = coroutineScope {
-        launch { storage.clear() }
-        parent
-    }
-}
+data class AuthToken(val accessToken: String, val tokenType: String, val refreshToken: String, val createdAt: Long)

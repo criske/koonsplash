@@ -49,14 +49,3 @@ interface AuthTokenStorage {
      */
     fun clear()
 }
-
-/**
- * Auth token.
- *
- * @property access_token Token itself.
- * @property type Type
- * @property refresh_token Refresh token used when this token expires (probably not).
- * @property created_at Creation date.
- * @constructor Create empty Auth token
- */
-data class AuthToken(val access_token: String, val token_type: String, val refresh_token: String, val created_at: Long)

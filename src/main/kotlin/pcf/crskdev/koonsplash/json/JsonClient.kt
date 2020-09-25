@@ -21,16 +21,16 @@
 
 package pcf.crskdev.koonsplash.json
 
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import com.google.gson.FieldNamingPolicy
+import com.google.gson.GsonBuilder
 
 /**
- * Json client based on Moshi.
+ * Json client based on Gson.
  * @author Cristian Pela
  * @since 0.1
  */
 object JsonClient {
-    val json = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
+    val json = GsonBuilder()
+        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+        .create()
 }
