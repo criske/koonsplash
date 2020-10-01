@@ -12,12 +12,9 @@ import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
 import pcf.crskdev.koonsplash.auth.AuthorizeForm
-import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.InvalidCredentialsException
 import pcf.crskdev.koonsplash.auth.NeedsLoginException
 import pcf.crskdev.koonsplash.auth.SecretKey
-import pcf.crskdev.koonsplash.http.HttpClient
-import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import java.net.URI
 
 @ExperimentalStdlibApi
@@ -37,15 +34,11 @@ fun main() {
         override val secretKey: SecretKey = System.getenv("secret_key")
     }
 
-    val authorizer = AuthorizerImpl(keysLoader.accessKey, keysLoader.secretKey)
-
     runBlocking {
         withContext(Dispatchers.IO) {
-            KoonsplashImpl(keysLoader.accessKey, storage, HttpClient.http, authorizer)
-                .authenticated(
-                    System.getenv("email"),
-                    System.getenv("password")
-                )
+            Koonsplash.builder(keysLoader, storage)
+                .build()
+                .authenticated(System.getenv("email"), System.getenv("password"))
         }
     }
 }

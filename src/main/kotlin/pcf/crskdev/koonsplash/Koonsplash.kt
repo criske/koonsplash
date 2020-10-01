@@ -21,11 +21,18 @@
 
 package pcf.crskdev.koonsplash
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
+import pcf.crskdev.koonsplash.auth.ApiKeysLoader
+import pcf.crskdev.koonsplash.auth.AuthTokenStorage
+import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.LoginFormController
 import pcf.crskdev.koonsplash.auth.OneShotLoginFormController
+import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 
 /**
  * Koonsplash entry point.
@@ -68,5 +75,51 @@ interface Koonsplash {
         val api: ApiAuth
 
         suspend fun signOut(): Koonsplash
+    }
+
+    @ExperimentalStdlibApi
+    companion object {
+        /**
+         * Helper to create a new Koonsplash object.
+         *
+         * @param keysLoader ApiKeysLoader
+         * @param storage AuthTokenStorage
+         * @return Koonsplash
+         */
+        fun builder(keysLoader: ApiKeysLoader, storage: AuthTokenStorage): KoonsplashBuilder =
+            KoonsplashBuilder(keysLoader, storage)
+    }
+}
+
+/**
+ * Koonsplash builder.
+ *
+ * @property keysLoader ApiKeysLoader
+ * @property storage AuthTokenStorage
+ */
+@ExperimentalStdlibApi
+class KoonsplashBuilder internal constructor(
+    private val keysLoader: ApiKeysLoader,
+    private val storage: AuthTokenStorage
+) {
+
+    /**
+     * Default Dispatcher
+     */
+    private var dispatcher = Dispatchers.IO
+
+    /**
+     * Dispatcher.
+     *
+     * @param dispatcher CoroutineDispatcher
+     */
+    fun dispatcher(dispatcher: CoroutineDispatcher): KoonsplashBuilder {
+        this.dispatcher = dispatcher
+        return this
+    }
+
+    fun build(): Koonsplash {
+        val authorizer = AuthorizerImpl(this.keysLoader.accessKey, this.keysLoader.secretKey)
+        return KoonsplashImpl(this.keysLoader.accessKey, this.storage, HttpClient.http, authorizer)
     }
 }
