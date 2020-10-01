@@ -48,12 +48,14 @@ internal class AuthorizerImpl(
      * @param loginFormController Login controller activates the login form if needed.
      * @param onError Failed authorizing callback.
      * @param onSuccess Success authorizing callback.
+     * @param scopes Auth Scopes
      * @receiver onError receives the error message.
      * @receiver onSuccess receives the AuthToken.
      */
     override fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
+        scopes: Array<out AuthScope>,
         onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     ) {
@@ -71,7 +73,7 @@ internal class AuthorizerImpl(
         }
         executor.execute {
             authCalls
-                .authorize(accessKey, server.callbackUri, AuthScope.PUBLIC, AuthScope.READ_USER)
+                .authorize(accessKey, server.callbackUri, *scopes)
                 .onSuccess { code ->
                     authCalls.token(code, accessKey, secretKey, server.callbackUri)
                         .onSuccess(onSuccessAndClose)

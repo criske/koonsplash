@@ -27,6 +27,7 @@ import kotlinx.coroutines.coroutineScope
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
+import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.LoginFormController
@@ -53,7 +54,7 @@ interface Koonsplash {
      * @param controller Controller
      * @return [Koonsplash.Auth]
      */
-    suspend fun authenticated(controller: LoginFormController): Auth
+    suspend fun authenticated(controller: LoginFormController, vararg scopes: AuthScope): Auth
 
     /**
      * One shot authentication.
