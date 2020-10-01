@@ -45,6 +45,7 @@ interface Authorizer {
     fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
+        scopes: Array<out AuthScope>,
         onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     )

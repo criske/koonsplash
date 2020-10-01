@@ -28,6 +28,7 @@ import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.LoginFormController
@@ -53,7 +54,7 @@ class KoonsplashImpl(
 
     override val api: Api = object : Api {}
 
-    override suspend fun authenticated(controller: LoginFormController): Koonsplash.Auth = coroutineScope {
+    override suspend fun authenticated(controller: LoginFormController, vararg scopes: AuthScope): Koonsplash.Auth = coroutineScope {
         val authToken = storage.load()
         if (authToken == null) {
             val dispatcher = coroutineContext[CoroutineDispatcher]
@@ -63,6 +64,7 @@ class KoonsplashImpl(
                 authorizer.authorize(
                     executor,
                     controller,
+                    scopes,
                     { cont.resumeWithException(it) },
                     {
                         storage.save(it)
