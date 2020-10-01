@@ -40,6 +40,8 @@ interface LoginFormSubmitter {
     /**
      * Give up submitting other credentials. This is internally called by LoginController.
      *
+     * @param cause cause of giving up, can be null as in "unknown"
+     *
      */
-    fun giveUp()
+    fun giveUp(cause: Throwable?)
 }

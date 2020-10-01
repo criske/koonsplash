@@ -43,11 +43,11 @@ internal class OneShotLoginFormController(
      */
     private val isSubmitted = AtomicBoolean(false)
 
-    override fun activateForm() {
+    override fun activateForm(dueTo: Throwable?) {
         if (isSubmitted.compareAndSet(false, true)) {
             this.submit(email, password)
         } else {
-            this.giveUp()
+            this.giveUp(dueTo)
         }
     }
 }

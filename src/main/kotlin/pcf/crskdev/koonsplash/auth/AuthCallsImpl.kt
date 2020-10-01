@@ -29,6 +29,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
 import java.io.IOException
 import java.net.URI
@@ -76,6 +77,32 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
         }
     }
 
+    override fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode> {
+        val form = FormBody.Builder()
+            .apply {
+                authorizeForm.forEach {
+                    this.add(it.first, it.second)
+                }
+            }
+            .build()
+        val request = Request.Builder()
+            .url(baseAuthHttpUrl.newBuilder().addPathSegment("authorize").build())
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .post(form)
+            .build()
+        val response = httpClient.newCall(request).execute()
+        return tryResult(response) {
+            val document = Jsoup.parse(response.body?.string())
+            this.extractAuthorizationCode(document)
+                ?.let { Result.success(it) }
+                ?: Result.failure(
+                    ConfirmAuthorizeFailureException(
+                        "Authorize form was submitted but authorization code was not received"
+                    )
+                )
+        }
+    }
+
     override fun loginForm(
         authenticityToken: AuthenticityToken,
         email: String,
@@ -97,6 +124,10 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             val document = Jsoup.parse(response.body?.string())
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
+                ?: this.extractConfirmAuthorizationForm(document)
+                    ?.let { form ->
+                        Result.failure(ConfirmAuthorizeException(form))
+                    }
                 ?: Result.failure(InvalidCredentialsException)
         }
     }
@@ -144,9 +175,56 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
      * @return AuthenticityToken
      */
     private fun extractAuthenticityToken(doc: Document): AuthenticityToken {
-        return doc.selectFirst("input[name=authenticity_token]")
-            .attr("value")
+        return doc.extractInputValue("authenticity_token")!!
     }
+
+    /**
+     * Extract confirm authorize form.
+     *
+     * @param doc Document
+     * @return AuthorizeForm or null
+     */
+    private fun extractConfirmAuthorizationForm(doc: Document): AuthorizeForm? {
+        return doc
+            .selectFirst("body > div.container.authorization-container > div > div > div > div > div:nth-child(3)")
+            ?.let {
+                it.selectFirst("form")?.let { form ->
+                    val utf8 = form.extractInputValue("utf8")
+                    requireNotNull(utf8)
+                    val authenticityToken = form.extractInputValue("authenticity_token")
+                    requireNotNull(authenticityToken)
+                    val clientId = form.extractInputValue("client_id")
+                    requireNotNull(clientId)
+                    val redirectUri = form.extractInputValue("redirect_uri")
+                    requireNotNull(redirectUri)
+                    val state = form.extractInputValue("state")
+                    requireNotNull(state)
+                    val responseType = form.extractInputValue("response_type")
+                    requireNotNull(responseType)
+                    val scope = form.extractInputValue("scope")
+                    requireNotNull(scope)
+                    listOf(
+                        "utf8" to utf8,
+                        "authenticity_token" to authenticityToken,
+                        "client_id" to clientId,
+                        "redirect_uri" to redirectUri,
+                        "state" to state,
+                        "response_type" to responseType,
+                        "scope" to scope
+                    )
+                }
+            }
+    }
+
+    /**
+     * Extract input value from a parent.
+     *
+     * @param parent Element
+     * @param name Name
+     * @return Value or null
+     */
+    private fun Element.extractInputValue(name: String): String? =
+        this.selectFirst("input[name=$name]")?.attr("value")
 
     /**
      * Try result helper.
