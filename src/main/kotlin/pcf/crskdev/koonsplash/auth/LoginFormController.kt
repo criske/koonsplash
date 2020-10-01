@@ -40,13 +40,18 @@ abstract class LoginFormController {
     /**
      * Activate the login form (as in showing the ui form).
      *
+     * Is activated in two scenarios:
+     * - client is first time login, then _dueTo_ is null
+     * - there was a login error
+     *
+     * @param dueTo Throwable
      */
-    abstract fun activateForm()
+    abstract fun activateForm(dueTo: Throwable?)
 
     /**
      * Attach form.
      *
-     * @param loginFormListener
+     * @param loginFormListener LoginFormListener
      */
     fun attachFormListener(loginFormListener: LoginFormListener) {
         this.loginFormListener = loginFormListener
@@ -87,11 +92,12 @@ abstract class LoginFormController {
     /**
      * Give up on introducing credentials.
      *
+     * @param cause: Cause of giving up, may be null as in "unknown"
      */
-    fun giveUp() {
+    fun giveUp(cause: Throwable?) {
         requireNotNull(this.loginFormSubmitter)
-        this.loginFormListener?.onGiveUp()
-        this.loginFormSubmitter?.giveUp()
+        this.loginFormListener?.onGiveUp(cause)
+        this.loginFormSubmitter?.giveUp(cause)
         this.detachAll()
     }
 
@@ -109,9 +115,11 @@ abstract class LoginFormController {
      * On login failure.
      *
      * Note: is not called from main thread.
+     *
+     * @param cause Cause of failure.
      */
-    internal fun onLoginFailure() {
-        this.loginFormListener?.onFailure()
+    internal fun onLoginFailure(cause: Throwable) {
+        this.loginFormListener?.onFailure(cause)
     }
 
     /**

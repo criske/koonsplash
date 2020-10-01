@@ -45,6 +45,14 @@ interface AuthCalls {
     fun authorize(accessKey: AccessKey, redirectUri: URI, vararg scopes: AuthScope): Result<AuthorizationCode>
 
     /**
+     * Authorize form that should be submitted in case when scopes are other than _PUBLIC_
+     *
+     * @param authorizeForm AuthorizeForm
+     * @return AuthorizationCode
+     */
+    fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode>
+
+    /**
      * Intermediary step login form.
      *
      * On successfully login, then one must use the _authorizeForm_ with _AuthenticityToken_ from result.

@@ -32,6 +32,7 @@ typealias AccessKey = String
 typealias AuthorizationCode = String
 typealias AuthenticityToken = String
 typealias SecretKey = String
+typealias AuthorizeForm = List<Pair<String, String>>
 
 /**
  * Thrown when a login form is needed to continue the authorization process.
@@ -58,3 +59,18 @@ object GiveUpException : RuntimeException()
  *
  */
 object SignedOutException : RuntimeException()
+
+/**
+ * Thrown when sometimes after a successful login client must confirm the authorization config in
+ * order to get the AuthorizationCode.
+ *
+ * @property form AuthorizeForm
+ */
+class ConfirmAuthorizeException(val form: AuthorizeForm) : RuntimeException()
+
+/**
+ * Thrown when confirm authorize form was not successfully submitted.
+ *
+ * @property message Message
+ */
+class ConfirmAuthorizeFailureException(message: String) : RuntimeException(message)

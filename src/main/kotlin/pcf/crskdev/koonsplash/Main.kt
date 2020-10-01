@@ -11,6 +11,7 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthenticityToken
 import pcf.crskdev.koonsplash.auth.AuthorizationCode
+import pcf.crskdev.koonsplash.auth.AuthorizeForm
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.InvalidCredentialsException
 import pcf.crskdev.koonsplash.auth.NeedsLoginException
@@ -56,6 +57,10 @@ object DummyAuthCalls : AuthCalls {
         redirectUri: URI,
         vararg scopes: AuthScope
     ): Result<AuthorizationCode> = Result.failure(NeedsLoginException("1234"))
+
+    override fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode> {
+        TODO("Not yet implemented")
+    }
 
     override fun loginForm(
         authenticityToken: AuthenticityToken,

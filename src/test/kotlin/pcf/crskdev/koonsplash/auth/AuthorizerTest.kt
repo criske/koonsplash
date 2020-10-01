@@ -136,8 +136,8 @@ internal class AuthorizerImplTest : StringSpec({
         }
 
         verify(exactly = 1) {
-            loginForm.onFailure()
-            loginForm.onGiveUp()
+            loginForm.onFailure(any())
+            loginForm.onGiveUp(any())
             onFailure(any())
             server.stopServing()
         }
@@ -174,7 +174,7 @@ internal class AuthorizerImplTest : StringSpec({
         verify(exactly = 0) {
             onSuccess(any())
             loginForm.onSuccess()
-            loginForm.onFailure()
+            loginForm.onFailure(any())
         }
 
         verify {
@@ -213,7 +213,7 @@ internal class AuthorizerImplTest : StringSpec({
         verify(exactly = 0) {
             onSuccess(any())
             loginForm.onSuccess()
-            loginForm.onFailure()
+            loginForm.onFailure(any())
         }
 
         verify {
@@ -253,7 +253,7 @@ internal class AuthorizerImplTest : StringSpec({
         verify(exactly = 0) {
             onSuccess(any())
             loginForm.onSuccess()
-            loginForm.onFailure()
+            loginForm.onFailure(any())
         }
 
         verify {
@@ -287,6 +287,10 @@ class MockAuthCalls(
     ): Result<AuthorizationCode> {
         calledAuthorize = true
         return authorize
+    }
+
+    override fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode> {
+        TODO("Not yet implemented")
     }
 
     override fun loginForm(
@@ -327,12 +331,12 @@ private class TestLoginFormController(
         loginFormListener?.let { attachFormListener(it) }
     }
 
-    override fun activateForm() {
+    override fun activateForm(dueTo: Throwable?) {
         if (!submitted) {
             submitted = true
             this.submit(email, password)
         } else {
-            this.giveUp()
+            this.giveUp(dueTo)
         }
     }
 }

@@ -96,23 +96,50 @@ internal class AuthorizerImpl(
                                                 }
                                         }
                                         .onFailure { loginErr ->
-                                            if (loginErr is InvalidCredentialsException) {
-                                                loginFormController.onLoginFailure()
-                                                loginFormController.activateForm()
-                                            } else {
-                                                loginFormController.detachAll()
-                                                onErrorAndClose(loginErr)
+                                            when (loginErr) {
+                                                InvalidCredentialsException -> {
+                                                    loginFormController.onLoginFailure(loginErr)
+                                                    loginFormController.activateForm(loginErr)
+                                                }
+                                                is ConfirmAuthorizeException -> {
+                                                    authCalls.authorizeForm(loginErr.form)
+                                                        .onSuccess { code ->
+                                                            authCalls.token(
+                                                                code,
+                                                                accessKey,
+                                                                secretKey,
+                                                                server.callbackUri
+                                                            )
+                                                                .onSuccess { token ->
+                                                                    onSuccessAndClose(token)
+                                                                    loginFormController.onLoginSuccess()
+                                                                    loginFormController.detachAll()
+                                                                }
+                                                                .onFailure { tokenErr ->
+                                                                    loginFormController.detachAll()
+                                                                    onErrorAndClose(tokenErr)
+                                                                }
+                                                        }
+                                                        .onFailure { formError ->
+                                                            loginFormController.detachAll()
+                                                            onErrorAndClose(formError)
+                                                        }
+                                                }
+                                                else -> {
+                                                    loginFormController.detachAll()
+                                                    onErrorAndClose(loginErr)
+                                                }
                                             }
                                         }
                                 }
                             }
 
-                            override fun giveUp() {
-                                onErrorAndClose(GiveUpException)
+                            override fun giveUp(cause: Throwable?) {
+                                onErrorAndClose(cause ?: GiveUpException)
                             }
                         }
                         loginFormController.attachFormSubmitter(loginFormSubmitter)
-                        loginFormController.activateForm()
+                        loginFormController.activateForm(null)
                     } else {
                         loginFormController.detachAll()
                         onErrorAndClose(authorizeErr)

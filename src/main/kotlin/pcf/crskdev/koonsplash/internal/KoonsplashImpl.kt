@@ -65,6 +65,7 @@ class KoonsplashImpl(
                     controller,
                     { cont.resumeWithException(it) },
                     {
+                        storage.save(it)
                         cont.resume(
                             KoonsplashAuthImpl(it, accessKey, this@KoonsplashImpl, storage, httpClient)
                         )

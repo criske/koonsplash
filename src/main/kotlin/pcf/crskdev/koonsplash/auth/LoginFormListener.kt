@@ -38,12 +38,14 @@ interface LoginFormListener {
     /**
      * Called on login error.
      *
+     * @param cause: Cause of failure
      */
-    fun onFailure() { }
+    fun onFailure(cause: Throwable) { }
 
     /**
      * Called when user gives up on login in.
      *
+     * @param cause: Cause of giving up, may be null as in "unknown".
      */
-    fun onGiveUp() { }
+    fun onGiveUp(cause: Throwable?) { }
 }
