@@ -26,6 +26,9 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.ApiAuth
+import pcf.crskdev.koonsplash.api.ApiAuthImpl
+import pcf.crskdev.koonsplash.api.ApiCall
+import pcf.crskdev.koonsplash.api.Verb
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
@@ -46,9 +49,7 @@ internal class KoonsplashAuthImpl(
     /**
      * Real api.
      */
-    private val realApi = object : ApiAuth {
-        override suspend fun me() {}
-    }
+    private val realApi = ApiAuthImpl(public.api, httpClient, accessKey, authToken)
 
     /**
      * Keeps reference of the current api (real or signed out)
@@ -64,8 +65,16 @@ internal class KoonsplashAuthImpl(
         public
     }
 
-    internal object ApiAuthSignedOut : ApiAuth {
+    /**
+     * Api auth signed out.
+     *
+     */
+    private object ApiAuthSignedOut : ApiAuth {
         override suspend fun me() {
+            throw SignedOutException
+        }
+
+        override fun raw(endpoint: String, verb: Verb): ApiCall {
             throw SignedOutException
         }
     }

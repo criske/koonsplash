@@ -21,6 +21,9 @@
 
 package pcf.crskdev.koonsplash.http
 
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -28,6 +31,8 @@ import pcf.crskdev.koonsplash.json.JsonClient
 import java.io.IOException
 import java.net.CookieManager
 import java.net.CookiePolicy
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Http client based on OkHttp.
@@ -54,6 +59,29 @@ object HttpClient {
                 ?: throw IOException("Body is empty")
         } else {
             throw IOException("Content Type is not json")
+        }
+    }
+
+    /**
+     * Coroutine equivalent of Call#execute()
+     *
+     */
+    suspend fun Call.executeCo(): Response = suspendCancellableCoroutine { cont ->
+        this.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (cont.isCancelled) return
+                cont.resumeWithException(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (cont.isCancelled) return
+                cont.resume(response)
+            }
+        })
+        cont.invokeOnCancellation {
+            try {
+                this.cancel()
+            } catch (e: IOException) { }
         }
     }
 }

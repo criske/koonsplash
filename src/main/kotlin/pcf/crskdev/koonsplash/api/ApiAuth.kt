@@ -21,6 +21,10 @@
 
 package pcf.crskdev.koonsplash.api
 
+import okhttp3.OkHttpClient
+import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthToken
+
 /**
  * Api authenticated endpoints.
  *
@@ -30,4 +34,28 @@ package pcf.crskdev.koonsplash.api
 interface ApiAuth : Api {
 
     suspend fun me()
+}
+
+/**
+ * Api auth implementation.
+ *
+ * @property httpClient Http client.
+ * @property accessKey Access key.
+ * @property authToken Auth token.
+ * @constructor
+ * @param api Delegates unauthenticated API.
+ */
+class ApiAuthImpl(
+    api: Api,
+    private val httpClient: OkHttpClient,
+    private val accessKey: AccessKey,
+    private val authToken: AuthToken
+) : ApiAuth, Api by api {
+
+    override suspend fun me() {
+        TODO("Not yet implemented")
+    }
+
+    override fun raw(endpoint: String, verb: Verb): ApiCall =
+        ApiCallImpl(Endpoint(endpoint, verb), httpClient, accessKey, authToken)
 }

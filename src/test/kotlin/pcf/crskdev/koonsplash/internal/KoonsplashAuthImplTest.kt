@@ -24,6 +24,7 @@ package pcf.crskdev.koonsplash.internal
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,6 +41,8 @@ internal class KoonsplashAuthImplTest : StringSpec({
     "should not allow calling api after sign out" {
         val storage = mockk<AuthTokenStorage>(relaxed = true)
         val public = mockk<Koonsplash>()
+        every { public.api } returns (mockk())
+
         val koonsplash = KoonsplashAuthImpl(
             AuthToken("", "", "", 0),
             "key",
@@ -48,7 +51,6 @@ internal class KoonsplashAuthImplTest : StringSpec({
             HttpClient.http
         )
         runBlockingTest {
-            koonsplash.api.me()
             val backToPublic = koonsplash.signOut()
             verify { storage.clear() }
             backToPublic shouldBeSameInstanceAs public

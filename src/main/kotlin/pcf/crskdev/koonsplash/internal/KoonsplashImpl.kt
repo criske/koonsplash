@@ -27,6 +27,7 @@ import kotlinx.coroutines.coroutineScope
 import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
+import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
@@ -52,7 +53,7 @@ class KoonsplashImpl(
     private val authorizer: Authorizer
 ) : Koonsplash {
 
-    override val api: Api = object : Api {}
+    override val api: Api = ApiImpl(httpClient, accessKey)
 
     override suspend fun authenticated(controller: LoginFormController, vararg scopes: AuthScope): Koonsplash.Auth = coroutineScope {
         val authToken = storage.load()

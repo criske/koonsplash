@@ -19,19 +19,42 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.json
-
-import com.google.gson.FieldNamingPolicy
-import com.google.gson.GsonBuilder
+package pcf.crskdev.koonsplash.api
 
 /**
- * Json client based on Gson.
+ * HTTP Verbs.
+ *
  * @author Cristian Pela
  * @since 0.1
  */
-object JsonClient {
-    val json = GsonBuilder()
-        .setPrettyPrinting()
-        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-        .create()
+sealed class Verb {
+    /**
+     * Retrieving resources.
+     *
+     */
+    object Get : Verb()
+
+    /**
+     *Deleting resources.
+     *
+     */
+    object Delete : Verb()
+
+    /**
+     * Modifies the resources.
+     *
+     */
+    sealed class Modify(vararg val formEntries: FormEntry) : Verb() {
+
+        /**
+         * Creating resources.
+         *
+         */
+        class Post(vararg formEntries: FormEntry) : Modify(*formEntries)
+        /**
+         * Updating  resources.
+         *
+         */
+        class Put(vararg formEntries: FormEntry) : Modify(*formEntries)
+    }
 }
