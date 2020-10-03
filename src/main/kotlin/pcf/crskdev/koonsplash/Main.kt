@@ -40,7 +40,7 @@ fun main() {
                 AuthScope.PUBLIC, AuthScope.READ_USER, AuthScope.WRITE_USER
             )
             .api
-        val me: String = api.raw("/me")()
+        val me: String = api.call("/me")()
         println(me.jsonPrettyPrint())
     }
 

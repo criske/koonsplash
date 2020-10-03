@@ -33,25 +33,25 @@ import pcf.crskdev.koonsplash.auth.AccessKey
 interface Api {
 
     /**
-     * Raw api call builder.
+     * Api call builder.
      *
      * Then endpoint may contain wildcards in this format _{my_wildcard}_
      *
      * Usage examples:
      *
      * ``` kotlin
-     *  api.raw("/me")()
-     *  api.raw("me")()
-     *  api.raw("https://api.unsplash.com/me")()
-     *  api.raw("/me", verb = Verb.Modify.Put("location" to "London"))()
+     *  api.call("/me")()
+     *  api.call("me")()
+     *  api.call("https://api.unsplash.com/me")()
+     *  api.call("/me", verb = Verb.Modify.Put("location" to "London"))()
      *
-     *  val prepared = api.raw("/photos/{id}")
+     *  val prepared = api.call("/photos/{id}")
      *  val photo1 = prepared("id_1")
      *  val photo2 = prepared("id_2")
      *
-     *  api.raw("/search/photos?page=1&query=office")()
+     *  api.call("/search/photos?page=1&query=office")()
      *
-     *  api.raw("/search/photos?page={page}&query={query}")
+     *  api.call("/search/photos?page={page}&query={query}")
      * ```
      * The call parameters could be a string, number or boolean depending
      * of Unsplash endpoint api specification. Just to be safe passing all strings is advised
@@ -61,7 +61,7 @@ interface Api {
      * @param verb Http verb, default [Verb.Get]
      * @return ApiCall than can be called with Params if wildcard is present
      */
-    fun raw(endpoint: String, verb: Verb = Verb.Get): ApiCall
+    fun call(endpoint: String, verb: Verb = Verb.Get): ApiCall
 }
 
 /**
@@ -74,6 +74,6 @@ internal class ApiImpl(
     private val accessKey: AccessKey,
 ) : Api {
 
-    override fun raw(endpoint: String, verb: Verb): ApiCall =
+    override fun call(endpoint: String, verb: Verb): ApiCall =
         ApiCallImpl(Endpoint(endpoint, verb), httpClient, accessKey, null)
 }

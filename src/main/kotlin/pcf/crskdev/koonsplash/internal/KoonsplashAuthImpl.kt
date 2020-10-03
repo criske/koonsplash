@@ -74,7 +74,7 @@ internal class KoonsplashAuthImpl(
             throw SignedOutException
         }
 
-        override fun raw(endpoint: String, verb: Verb): ApiCall {
+        override fun call(endpoint: String, verb: Verb): ApiCall {
             throw SignedOutException
         }
     }

@@ -56,6 +56,6 @@ class ApiAuthImpl(
         TODO("Not yet implemented")
     }
 
-    override fun raw(endpoint: String, verb: Verb): ApiCall =
+    override fun call(endpoint: String, verb: Verb): ApiCall =
         ApiCallImpl(Endpoint(endpoint, verb), httpClient, accessKey, authToken)
 }
