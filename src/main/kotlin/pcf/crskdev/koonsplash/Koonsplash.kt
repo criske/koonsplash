@@ -63,8 +63,8 @@ interface Koonsplash {
      * @param password Password
      * @return [Koonsplash.Auth]
      */
-    suspend fun authenticated(email: String, password: String): Auth = coroutineScope {
-        authenticated(OneShotLoginFormController(email, password))
+    suspend fun authenticated(email: String, password: String, vararg scopes: AuthScope): Auth = coroutineScope {
+        authenticated(OneShotLoginFormController(email, password), *scopes)
     }
 
     /**

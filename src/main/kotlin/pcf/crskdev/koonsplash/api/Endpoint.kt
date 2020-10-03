@@ -19,19 +19,12 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.json
-
-import com.google.gson.FieldNamingPolicy
-import com.google.gson.GsonBuilder
+package pcf.crskdev.koonsplash.api
 
 /**
- * Json client based on Gson.
- * @author Cristian Pela
- * @since 0.1
+ * Endpoint.
+ *
+ * @property path Endpoints path
+ * @property verb Http verb.
  */
-object JsonClient {
-    val json = GsonBuilder()
-        .setPrettyPrinting()
-        .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-        .create()
-}
+internal class Endpoint(val path: String, val verb: Verb)
