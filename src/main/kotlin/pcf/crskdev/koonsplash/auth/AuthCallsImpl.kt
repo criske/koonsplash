@@ -52,7 +52,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
     override fun authorize(
         accessKey: AccessKey,
         redirectUri: URI,
-        vararg scopes: AuthScope
+        scopes: AuthScope
     ): Result<AuthorizationCode> {
         val url = baseAuthHttpUrl
             .newBuilder()
@@ -60,7 +60,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             .addQueryParameter("client_id", accessKey)
             .addEncodedQueryParameter("redirect_uri", redirectUri.toString())
             .addQueryParameter("response_type", "code")
-            .addEncodedQueryParameter("scope", scopes.joinToString("+") { it.value })
+            .addEncodedQueryParameter("scope", scopes.value)
             .build()
         val request = Request.Builder()
             .cacheControl(CacheControl.FORCE_NETWORK)

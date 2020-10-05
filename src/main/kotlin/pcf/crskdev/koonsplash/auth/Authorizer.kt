@@ -37,6 +37,7 @@ interface Authorizer {
      *
      * @param executor Background thread.
      * @param loginFormController Login controller activates the login form if needed.
+     * @param scopes Scopes
      * @param onError Failed authorizing callback.
      * @param onSuccess Success authorizing callback.
      * @receiver onError receives the error message.
@@ -45,7 +46,7 @@ interface Authorizer {
     fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
-        scopes: Array<out AuthScope>,
+        scopes: AuthScope,
         onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     )

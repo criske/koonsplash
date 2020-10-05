@@ -55,7 +55,7 @@ class KoonsplashImpl(
 
     override val api: Api = ApiImpl(httpClient, accessKey)
 
-    override suspend fun authenticated(controller: LoginFormController, vararg scopes: AuthScope): Koonsplash.Auth = coroutineScope {
+    override suspend fun authenticated(controller: LoginFormController, scopes: AuthScope): Koonsplash.Auth = coroutineScope {
         val authToken = storage.load()
         if (authToken == null) {
             val dispatcher = coroutineContext[CoroutineDispatcher]

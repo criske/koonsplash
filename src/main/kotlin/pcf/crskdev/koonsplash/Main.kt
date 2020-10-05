@@ -37,7 +37,7 @@ fun main() {
             .authenticated(
                 System.getenv("email"),
                 System.getenv("password"),
-                AuthScope.PUBLIC, AuthScope.READ_USER, AuthScope.WRITE_USER
+                AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
             )
             .api
         val me: String = api.call("/me")()

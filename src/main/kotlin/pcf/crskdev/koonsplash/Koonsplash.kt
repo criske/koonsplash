@@ -54,7 +54,7 @@ interface Koonsplash {
      * @param controller Controller
      * @return [Koonsplash.Auth]
      */
-    suspend fun authenticated(controller: LoginFormController, vararg scopes: AuthScope): Auth
+    suspend fun authenticated(controller: LoginFormController, scopes: AuthScope = AuthScope.ALL): Auth
 
     /**
      * One shot authentication.
@@ -63,8 +63,8 @@ interface Koonsplash {
      * @param password Password
      * @return [Koonsplash.Auth]
      */
-    suspend fun authenticated(email: String, password: String, vararg scopes: AuthScope): Auth = coroutineScope {
-        authenticated(OneShotLoginFormController(email, password), *scopes)
+    suspend fun authenticated(email: String, password: String, scopes: AuthScope = AuthScope.ALL): Auth = coroutineScope {
+        authenticated(OneShotLoginFormController(email, password), scopes)
     }
 
     /**
