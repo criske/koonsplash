@@ -59,7 +59,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify {
             onSuccess(authToken)
@@ -93,7 +93,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify {
             onSuccess(authToken)
@@ -128,7 +128,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify(exactly = 0) {
             loginForm.onSuccess()
@@ -169,7 +169,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify(exactly = 0) {
             onSuccess(any())
@@ -208,7 +208,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify(exactly = 0) {
             onSuccess(any())
@@ -248,7 +248,7 @@ internal class AuthorizerImplTest : StringSpec({
         every { server.callbackUri } returns URI.create("/")
         every { server.startServing() } returns true
 
-        authorizer.authorize(TestExecutor, controller, arrayOf(AuthScope.PUBLIC), onFailure, onSuccess)
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
 
         verify(exactly = 0) {
             onSuccess(any())
@@ -283,7 +283,7 @@ class MockAuthCalls(
     override fun authorize(
         accessKey: AccessKey,
         redirectUri: URI,
-        vararg scopes: AuthScope
+        scopes: AuthScope
     ): Result<AuthorizationCode> {
         calledAuthorize = true
         return authorize

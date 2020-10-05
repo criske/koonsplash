@@ -19,6 +19,8 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package pcf.crskdev.koonsplash.auth
 
 /**
@@ -28,14 +30,46 @@ package pcf.crskdev.koonsplash.auth
  * @author Cristian Pela
  * @since 0.1
  */
-enum class AuthScope(val value: String) {
-    PUBLIC("public"),
-    READ_USER("read_user"),
-    WRITE_USER("write_user"),
-    READ_PHOTOS("read_photos"),
-    WRITE_PHOTOS("write_photos"),
-    WRITE_LIKES("write_likes"),
-    WRITE_FOLLOWERS("write_followers"),
-    READ_COLLECTIONS("read_collections"),
-    WRITE_COLLECTIONS("write_collections")
+sealed class AuthScope {
+
+    abstract val value: String
+
+    operator fun plus(other: AuthScope): AuthScope =
+        AuthScopePlus(this, other)
+
+    operator fun minus(other: AuthScope): AuthScope =
+        AuthScopeMinus(this, other)
+
+    companion object {
+        val PUBLIC: AuthScope = AuthScopeValue("public")
+        val READ_USER: AuthScope = AuthScopeValue("read_user")
+        val WRITE_USER: AuthScope = AuthScopeValue("write_user")
+        val READ_PHOTOS: AuthScope = AuthScopeValue("read_photos")
+        val WRITE_PHOTOS: AuthScope = AuthScopeValue("write_photos")
+        val WRITE_LIKES: AuthScope = AuthScopeValue("write_likes")
+        val WRITE_FOLLOWERS: AuthScope = AuthScopeValue("write_followers")
+        val READ_COLLECTIONS: AuthScope = AuthScopeValue("read_collections")
+        val WRITE_COLLECTIONS: AuthScope = AuthScopeValue("write_collections")
+        val ALL: AuthScope =
+            (PUBLIC + READ_USER + WRITE_USER + READ_PHOTOS + WRITE_PHOTOS + WRITE_LIKES + WRITE_FOLLOWERS + READ_COLLECTIONS + WRITE_COLLECTIONS)
+    }
 }
+
+private class AuthScopeValue(override val value: String) : AuthScope()
+
+private class AuthScopePlus(left: AuthScope, right: AuthScope) : AuthScope() {
+
+    override val value: String = (left.values.toSet() + right.values).joinToString("+")
+}
+
+private class AuthScopeMinus(left: AuthScope, right: AuthScope) : AuthScope() {
+
+    private val rightValues = right.value
+
+    override val value: String = left.values.filter { !rightValues.contains(it) }
+        .joinToString("+")
+        .takeIf { it.isNotEmpty() }
+        ?: throw IllegalStateException("It should be at least one scope after subtracting")
+}
+
+private val AuthScope.values get() = this.value.split("+").toList()

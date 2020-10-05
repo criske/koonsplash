@@ -55,7 +55,7 @@ internal class AuthorizerImpl(
     override fun authorize(
         executor: Executor,
         loginFormController: LoginFormController,
-        scopes: Array<out AuthScope>,
+        scopes: AuthScope,
         onError: (Throwable) -> Unit,
         onSuccess: (AuthToken) -> Unit
     ) {
@@ -73,7 +73,7 @@ internal class AuthorizerImpl(
         }
         executor.execute {
             authCalls
-                .authorize(accessKey, server.callbackUri, *scopes)
+                .authorize(accessKey, server.callbackUri, scopes)
                 .onSuccess { code ->
                     authCalls.token(code, accessKey, secretKey, server.callbackUri)
                         .onSuccess(onSuccessAndClose)

@@ -42,7 +42,7 @@ interface AuthCalls {
      * @param scopes Scopes see AuthScope.
      * @return AuthorizationCode result.
      */
-    fun authorize(accessKey: AccessKey, redirectUri: URI, vararg scopes: AuthScope): Result<AuthorizationCode>
+    fun authorize(accessKey: AccessKey, redirectUri: URI, scopes: AuthScope): Result<AuthorizationCode>
 
     /**
      * Authorize form that should be submitted in case when scopes are other than _PUBLIC_
