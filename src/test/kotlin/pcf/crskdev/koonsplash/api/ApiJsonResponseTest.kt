@@ -21,10 +21,36 @@
 
 package pcf.crskdev.koonsplash.api
 
-internal typealias FormEntry = Pair<String, String>
-typealias Param = Any
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
+import okhttp3.Headers
+import java.io.StringReader
 
-/**
- * Selector for a json response [ApiJsonResponse.ApiJson]. Should be String or Int.
- */
-typealias Selector = Comparable<*>
+internal class ApiJsonResponseTest : StringSpec({
+
+    val response = ApiJsonResponse(
+        StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
+        ApiJsonResponse.ApiMeta(Headers.Builder().build())
+    )
+
+    "should traverse the json tree" {
+        response[0]["message"]<String>() shouldBe "Hi"
+        response[0]["place"]["name"]<String>() shouldBe "World"
+    }
+
+    "should throw if selector key is not a string or int" {
+        shouldThrow<IllegalStateException> {
+            val badSelector = object : Comparable<Any> {
+                override fun compareTo(other: Any): Int = 0
+            }
+            response[badSelector]
+        }
+    }
+
+    "should throw if value type is not supported" {
+        shouldThrow<IllegalStateException> {
+            response[0]["message"]<List<*>>()
+        }
+    }
+})

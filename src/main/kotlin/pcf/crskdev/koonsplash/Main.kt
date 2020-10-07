@@ -8,7 +8,6 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
-import pcf.crskdev.koonsplash.json.JsonClient
 
 @ExperimentalStdlibApi
 fun main() {
@@ -40,16 +39,11 @@ fun main() {
                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
             )
             .api
-        val me: String = api.call("/me")()
-        println(me.jsonPrettyPrint())
+        val me = api.call("/me")()["links"]
+        println(me)
     }
 
     // https://github.com/square/okhttp/issues/4029
     // manually shutdown okhttp
     HttpClient.http.dispatcher.executorService.shutdown()
-}
-
-fun String.jsonPrettyPrint(): String {
-    val fromJson = JsonClient.json.fromJson(this, Map::class.java)
-    return JsonClient.json.toJson(fromJson)
 }
