@@ -21,34 +21,40 @@
 
 package pcf.crskdev.koonsplash.api
 
-import com.google.gson.JsonParser
-import java.io.Reader
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
 
 /**
- * Api json response. This encapsulates the json model and response metadata.
+ * Api response json model tree backed by gson.
  *
- * Usage:
- * ```kotlin
- *  //assuming json response looks like "[{"message":"Hello","who":{"name":"John"}}]"
- *  val response = api.cal(...)()
- *  val root: ApiJson = response[0]
- *  println(root)//{"message":"Hi","place":{"name":"World"}}
- *  val message: String = root["message"]() // "hello"
- *  val name: String = root["message"]["name"]() // "John"
- * ```
- * The ApiJson invocation ([ApiJson.invoke]) will try to get a value of String, Boolean, Number and Link.
- *
- * @property reader [Reader]
- * @property meta [ApiMeta]
+ * @property jsonEl Current json element
+ * @constructor Create empty Api json
  * @author Cristian Pela
  * @since 0.1
  */
-class ApiJsonResponse internal constructor(private val reader: Reader, val meta: ApiMeta) {
+class ApiJson internal constructor(@PublishedApi internal val jsonEl: JsonElement) {
 
     /**
-     * Root json element from response.
+     * Try to get a value of String, Boolean, Number, Link associated with this json key.
+     *
+     * @param T
+     * @return T as primitive value.
      */
-    private val jsonEl = ApiJson(JsonParser.parseReader(reader))
+    inline operator fun <reified T> invoke(): T {
+        return when (T::class) {
+            Int::class -> this.jsonEl.asInt
+            Double::class -> this.jsonEl.asDouble
+            Float::class -> this.jsonEl.asFloat
+            Short::class -> this.jsonEl.asShort
+            String::class -> this.jsonEl.asString
+            Boolean::class -> this.jsonEl.asBoolean
+            else -> throw IllegalStateException(
+                "Type not supported ${T::class}. Available types are: Number, String, Boolean, Link."
+            )
+        } as T
+    }
 
     /**
      * Gets an ApiJson element based on:
@@ -61,5 +67,18 @@ class ApiJsonResponse internal constructor(private val reader: Reader, val meta:
      * @param selector String or Int
      * @return [ApiJson]
      */
-    operator fun get(selector: Selector): ApiJson = this.jsonEl[selector]
+    operator fun get(selector: Selector): ApiJson {
+        val element = when (selector) {
+            is String -> (this.jsonEl as JsonObject).get(selector) ?: JsonNull.INSTANCE
+            is Int -> (this.jsonEl as JsonArray)[selector]
+            else -> throw IllegalStateException(
+                "Invalid selector ${selector::class.java}. Only strings or integers are permitted."
+            )
+        }
+        return ApiJson(element)
+    }
+
+    override fun toString(): String {
+        return this.jsonEl.toString()
+    }
 }

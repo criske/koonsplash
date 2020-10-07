@@ -96,7 +96,7 @@ internal class ApiCallImpl(
             val jsonReader = response.body?.charStream() ?: StringReader("{}")
             ApiJsonResponse(
                 jsonReader,
-                ApiJsonResponse.ApiMeta(response.headers)
+                ApiMeta(response.headers)
             )
         } else {
             throw IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
