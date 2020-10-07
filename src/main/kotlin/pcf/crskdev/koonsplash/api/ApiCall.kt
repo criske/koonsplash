@@ -30,6 +30,7 @@ import okhttp3.RequestBody
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
+import java.io.StringReader
 
 /**
  * API call.
@@ -41,9 +42,9 @@ interface ApiCall {
      * Invoker
      *
      * @param param Params
-     * @return JSON String response
+     * @return [ApiJsonResponse]
      */
-    suspend operator fun invoke(vararg param: Param): String
+    suspend operator fun invoke(vararg param: Param): ApiJsonResponse
 }
 
 /**
@@ -67,7 +68,7 @@ internal class ApiCallImpl(
 
     private val endpointParser = EndpointParser(baseUrl.toString(), endpoint.path)
 
-    override suspend fun invoke(vararg param: Param): String = coroutineScope {
+    override suspend fun invoke(vararg param: Param): ApiJsonResponse = coroutineScope {
         val url = baseUrl.newBuilder()
             .apply {
                 endpointParser.parse(*param).forEach {
@@ -92,7 +93,11 @@ internal class ApiCallImpl(
             .build()
         val response = httpClient.newCall(request).executeCo()
         if (response.isSuccessful) {
-            response.body?.string() ?: "Empty response"
+            val jsonReader = response.body?.charStream() ?: StringReader("{}")
+            ApiJsonResponse(
+                jsonReader,
+                ApiJsonResponse.ApiMeta(response.headers)
+            )
         } else {
             throw IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
         }
