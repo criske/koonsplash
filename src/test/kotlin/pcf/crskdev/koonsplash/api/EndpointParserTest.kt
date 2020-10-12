@@ -35,18 +35,18 @@ internal class EndpointParserTest : StringSpec({
         .toString()
 
     "should parse without wildcard params" {
-        EndpointParser(api, "/photos/random").parse() shouldBe listOf(
+        EndpointParser(Endpoint(api, "/photos/random")).parse() shouldBe listOf(
             EndpointParser.Token.Path("photos"),
             EndpointParser.Token.Path("random")
         )
-        EndpointParser(api, "photos/random").parse() shouldBe listOf(
+        EndpointParser(Endpoint(api, "photos/random")).parse() shouldBe listOf(
             EndpointParser.Token.Path("photos"),
             EndpointParser.Token.Path("random")
         )
     }
 
     "should parse without wildcard params and allow base url in endpoint" {
-        EndpointParser(api, "$api/photos/random").parse() shouldBe listOf(
+        EndpointParser(Endpoint(api, "$api/photos/random")).parse() shouldBe listOf(
             EndpointParser.Token.Path("photos"),
             EndpointParser.Token.Path("random")
         )
@@ -54,8 +54,10 @@ internal class EndpointParserTest : StringSpec({
 
     "should parse with wildcard params" {
         EndpointParser(
-            api,
-            "$api/photos/{id}/collection/{collection_id}?page={page}&q={q}&fm={jpg}&ordered={ordered}"
+            Endpoint(
+                api,
+                "$api/photos/{id}/collection/{collection_id}?page={page}&q={q}&fm={jpg}&ordered={ordered}"
+            )
         ).parse("12345", "col23", 1, 75, "jpg", true) shouldBe listOf(
             EndpointParser.Token.Path("photos"),
             EndpointParser.Token.Path("12345"),
@@ -70,7 +72,11 @@ internal class EndpointParserTest : StringSpec({
 
     "should throw when one of params is not string, number of boolean" {
         shouldThrow<IllegalStateException> {
-            EndpointParser(api, "/photos/{id}").parse(Any())
+            EndpointParser(Endpoint(api, "/photos/{id}")).parse(Any())
         }
+    }
+
+    "should return empty tokens if we have a full url" {
+        EndpointParser(Endpoint("http://foobar.zyx")).parse() shouldBe emptyList<EndpointParser.Token>()
     }
 })

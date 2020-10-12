@@ -75,5 +75,5 @@ internal class ApiImpl(
 ) : Api {
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(endpoint, verb), httpClient, accessKey, null)
+        ApiCallImpl(Endpoint("https://api.unsplash.com/", endpoint, verb), httpClient, accessKey, null)
 }

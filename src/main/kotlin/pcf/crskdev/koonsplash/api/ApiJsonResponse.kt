@@ -38,17 +38,22 @@ import java.io.Reader
  * ```
  * The ApiJson invocation ([ApiJson.invoke]) will try to get a value of String, Boolean, Number and Link.
  *
+ * @property apiCall [ApiCall] required for opening links
  * @property reader [Reader]
  * @property meta [ApiMeta]
  * @author Cristian Pela
  * @since 0.1
  */
-class ApiJsonResponse internal constructor(private val reader: Reader, val meta: ApiMeta) {
+class ApiJsonResponse internal constructor(
+    private val apiCall: (String) -> ApiCall,
+    private val reader: Reader,
+    val meta: ApiMeta
+) {
 
     /**
      * Root json element from response.
      */
-    private val jsonEl = ApiJson(JsonParser.parseReader(reader))
+    private val jsonEl = ApiJson(apiCall, JsonParser.parseReader(reader))
 
     /**
      * Gets an ApiJson element based on:
@@ -62,4 +67,6 @@ class ApiJsonResponse internal constructor(private val reader: Reader, val meta:
      * @return [ApiJson]
      */
     operator fun get(selector: Selector): ApiJson = this.jsonEl[selector]
+
+    override fun toString(): String = this.jsonEl.toString()
 }

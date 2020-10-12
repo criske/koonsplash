@@ -57,5 +57,5 @@ class ApiAuthImpl(
     }
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(endpoint, verb), httpClient, accessKey, authToken)
+        ApiCallImpl(Endpoint("https://api.unsplash.com/", endpoint, verb), httpClient, accessKey, authToken)
 }
