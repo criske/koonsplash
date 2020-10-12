@@ -21,12 +21,19 @@
 
 package pcf.crskdev.koonsplash.api
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okio.buffer
+import okio.sink
 import java.io.File
-import java.io.FileOutputStream
 import java.net.URI
 
 /**
@@ -121,22 +128,43 @@ sealed class Link(protected val url: String) {
         /**
          * Downloads a photo to a file.
          *
-         * @param location
-         * @param progressType
-         * @param progress
+         * @param dir File location
+         * @param fileName File name.
+         * @param progressType ApiCall.Progress
+         * @param dispatcher CoroutineDispatcher
          * @receiver
          */
+        @FlowPreview
         @ExperimentalCoroutinesApi
         fun download(
-            location: File,
-            progressType: ApiCall.Progress = ApiCall.Progress.Percent
-        ): Flow<ApiCall.ProgressStatus<Photo>> = apiCall(url)
-            .execute(emptyList(), progressType = progressType) { response ->
-                FileOutputStream(location).use { fos ->
-                    fos.write(response.body!!.bytes())
+            dir: File,
+            fileName: String,
+            progressType: ApiCall.Progress = ApiCall.Progress.Percent,
+            dispatcher: CoroutineDispatcher = Dispatchers.Default
+        ): Flow<ApiCall.ProgressStatus<Photo>> {
+            return apiCall(url)
+                .execute(emptyList(), ApiCall.Progress.Ignore)
+                .flatMapConcat {
+                    when (it) {
+                        is ApiCall.ProgressStatus.Done -> {
+                            val downloadUrl: String = it.resource["url"]()
+                            apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
+                                val ext = response.headers["Content-Type"]?.toMediaType()?.subtype ?: "jpg"
+                                val file = File(dir, "$fileName.$ext")
+                                response.body?.source()?.use { input ->
+                                    file.sink().buffer().use { output ->
+                                        output.writeAll(input)
+                                    }
+                                }
+                                Photo(file.absolutePath)
+                            }
+                        }
+                        is ApiCall.ProgressStatus.Canceled -> throw it.err
+                        else -> throw IllegalStateException("Should not reach here: $it")
+                    }
                 }
-                Photo(location.absolutePath)
-            }
+                .flowOn(dispatcher)
+        }
     }
 
     /**

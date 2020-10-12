@@ -86,10 +86,7 @@ object HttpClient {
             }
         })
         cont.invokeOnCancellation {
-            try {
-                this.cancel()
-            } catch (e: IOException) {
-            }
+            this.cancel()
         }
     }
 

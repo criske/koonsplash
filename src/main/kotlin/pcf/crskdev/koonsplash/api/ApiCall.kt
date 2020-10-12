@@ -21,7 +21,6 @@
 
 package pcf.crskdev.koonsplash.api
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
@@ -29,6 +28,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -159,14 +159,17 @@ internal class ApiCallImpl(
         execute(param.toList()).collect {
             when (it) {
                 is ApiCall.ProgressStatus.Done<*> ->
-                    responseChannel.offer(it.resource as ApiJsonResponse)
+                    launch {
+                        responseChannel.send(it.resource as ApiJsonResponse)
+                    }
                 is ApiCall.ProgressStatus.Canceled ->
-                    responseChannel.cancel(CancellationException("", it.err))
+                    throw it.err
                 else -> {
                 }
             }
         }
-        responseChannel.receive()
+        var receive = responseChannel.receive()
+        receive
     }
 
     @ExperimentalCoroutinesApi
@@ -249,11 +252,10 @@ internal class ApiCallImpl(
                 )
             }
         } catch (ex: Exception) {
-            offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+            send(ApiCall.ProgressStatus.Canceled<T>(ex))
         } finally {
             close()
         }
-
         awaitClose {}
     }
 

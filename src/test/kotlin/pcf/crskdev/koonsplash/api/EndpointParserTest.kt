@@ -75,4 +75,8 @@ internal class EndpointParserTest : StringSpec({
             EndpointParser(Endpoint(api, "/photos/{id}")).parse(Any())
         }
     }
+
+    "should return empty tokens if we have a full url" {
+        EndpointParser(Endpoint("http://foobar.zyx")).parse() shouldBe emptyList<EndpointParser.Token>()
+    }
 })

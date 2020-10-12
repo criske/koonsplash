@@ -41,6 +41,7 @@ internal class EndpointParser(endpoint: Endpoint) {
      * Path
      */
     private val path = endpoint.path
+
     /**
      * Endpoint token type.
      *
@@ -57,6 +58,9 @@ internal class EndpointParser(endpoint: Endpoint) {
      * @return list of endpoint tokens.
      */
     fun parse(vararg params: Any): List<Token> {
+        if (baseUrl == path) { // we have full url, need for parsing
+            return emptyList()
+        }
         params.forEachIndexed { index, param ->
             if (!(param is String || param is Number || param is Boolean)) {
                 throw IllegalStateException(
