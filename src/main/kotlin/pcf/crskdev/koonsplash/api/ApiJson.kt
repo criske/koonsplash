@@ -29,21 +29,29 @@ import com.google.gson.JsonObject
 /**
  * Api response json model tree backed by gson.
  *
+ * @property apiCall [ApiCall] required for opening links
  * @property jsonEl Current json element
  * @constructor Create empty Api json
  * @author Cristian Pela
  * @since 0.1
  */
-class ApiJson internal constructor(@PublishedApi internal val jsonEl: JsonElement) {
+class ApiJson internal constructor(
+    @PublishedApi internal val apiCall: (String) -> ApiCall,
+    @PublishedApi internal val jsonEl: JsonElement
+) {
 
     /**
      * Try to get a value of String, Boolean, Number, Link associated with this json key.
      *
      * @param T
-     * @return T as primitive value.
+     * @return T as accepted value type.
      */
     inline operator fun <reified T> invoke(): T {
-        return when (T::class) {
+        val kClass = T::class
+        if (Link::class.java.isAssignableFrom(kClass.java)) {
+            return Link.create(this.apiCall, this.jsonEl.asString) as T
+        }
+        return when (kClass) {
             Int::class -> this.jsonEl.asInt
             Double::class -> this.jsonEl.asDouble
             Float::class -> this.jsonEl.asFloat
@@ -75,7 +83,7 @@ class ApiJson internal constructor(@PublishedApi internal val jsonEl: JsonElemen
                 "Invalid selector ${selector::class.java}. Only strings or integers are permitted."
             )
         }
-        return ApiJson(element)
+        return ApiJson(this.apiCall, element)
     }
 
     override fun toString(): String {

@@ -26,15 +26,21 @@ import java.lang.IllegalStateException
 /**
  * Endpoint parser.
  *
- * @property endpoint Endpoint
+ * @property path Endpoint
  * @author Cristian Pela
  * @since 0.1
  */
-internal class EndpointParser(
-    private val apiUrl: String,
-    private val endpoint: String
-) {
+internal class EndpointParser(endpoint: Endpoint) {
 
+    /**
+     * Base url
+     */
+    private val baseUrl = endpoint.baseUrl
+
+    /**
+     * Path
+     */
+    private val path = endpoint.path
     /**
      * Endpoint token type.
      *
@@ -58,7 +64,7 @@ internal class EndpointParser(
                 )
             }
         }
-        return this.endpoint
+        return this.path
             .let {
                 if (params.isNotEmpty()) {
                     it.replace("\\{[a-zA-Z0-9_]+}".toRegex(), "%s")
@@ -71,8 +77,8 @@ internal class EndpointParser(
             .let { split ->
                 split[0] // segment paths part
                     .let {
-                        if (it.startsWith(apiUrl)) {
-                            it.substring(apiUrl.length)
+                        if (it.startsWith(baseUrl)) {
+                            it.substring(baseUrl.length)
                         } else {
                             it
                         }

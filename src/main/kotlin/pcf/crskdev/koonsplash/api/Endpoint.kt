@@ -24,7 +24,11 @@ package pcf.crskdev.koonsplash.api
 /**
  * Endpoint.
  *
+ * @property baseUrl String
  * @property path Endpoints path
  * @property verb Http verb.
  */
-internal class Endpoint(val path: String, val verb: Verb)
+internal class Endpoint(val baseUrl: String, val path: String, val verb: Verb = Verb.Get) {
+
+    constructor(fullUrl: String, verb: Verb = Verb.Get) : this(fullUrl, fullUrl, verb)
+}

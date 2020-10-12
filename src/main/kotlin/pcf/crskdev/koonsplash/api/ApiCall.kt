@@ -21,15 +21,24 @@
 
 package pcf.crskdev.koonsplash.api
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import okhttp3.FormBody
-import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.Response
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
+import pcf.crskdev.koonsplash.http.HttpClient.withProgressListener
 import java.io.StringReader
 
 /**
@@ -45,6 +54,87 @@ interface ApiCall {
      * @return [ApiJsonResponse]
      */
     suspend operator fun invoke(vararg param: Param): ApiJsonResponse
+
+    /**
+     * Generic execution with observing the call progress.
+     *
+     * @param params Params
+     * @param progressType Progress Type default [Progress.Ignore]
+     * @param transformer Transforms a successful response to [T]
+     * @return ProgressStatus stream
+     */
+    fun <T> execute(
+        params: List<Param>,
+        progressType: Progress = Progress.Ignore,
+        transformer: (Response) -> T
+    ): Flow<ProgressStatus<T>>
+
+    /**
+     * ApiJsonResponse execution with observing the call progress.
+     *
+     * @param params Params
+     * @param progressType Progress Type default [Progress.Ignore]
+     * @return ProgressStatus stream
+     */
+    fun execute(
+        params: List<Param>,
+        progressType: Progress = Progress.Ignore
+    ): Flow<ProgressStatus<ApiJsonResponse>>
+
+    /**
+     * Download progress visualization type.
+     *
+     */
+    sealed class Progress {
+
+        /**
+         * Ignore watching the progress.
+         *
+         * @constructor Create empty Ignore
+         */
+        object Ignore : Progress()
+
+        /**
+         * Progress will be shown as percentage
+         *
+         * @constructor Create empty Percent
+         */
+        object Percent : Progress()
+
+        /**
+         * Progress will be shown byte by byte.
+         *
+         * @constructor Create empty Raw
+         */
+        object Raw : Progress()
+
+        /**
+         * Progress will be shown by a step of skipped bytes.
+         *
+         * @property bytesToSkip Bytes to skip.
+         * @constructor Create empty By step
+         */
+        class ByStep(val bytesToSkip: Long) : Progress() {
+
+            init {
+                require(bytesToSkip > 0) {
+                    "Minimum step should at least 1 byte/"
+                }
+            }
+        }
+    }
+
+    /**
+     * Progress status tracker.
+     *
+     * @constructor Create empty Progress status
+     */
+    sealed class ProgressStatus<T> {
+        class Canceled<T>(val err: Throwable) : ProgressStatus<T>()
+        class Current<T>(val value: Number, val length: Long) : ProgressStatus<T>()
+        class Done<T>(val resource: T) : ProgressStatus<T>()
+        class Starting<T> : ProgressStatus<T>()
+    }
 }
 
 /**
@@ -61,17 +151,34 @@ internal class ApiCallImpl(
     private val authToken: AuthToken?
 ) : ApiCall {
 
-    private val baseUrl = HttpUrl.Builder()
-        .scheme("https")
-        .host("api.unsplash.com")
-        .build()
+    private val endpointParser = EndpointParser(endpoint)
 
-    private val endpointParser = EndpointParser(baseUrl.toString(), endpoint.path)
-
+    @ExperimentalCoroutinesApi
     override suspend fun invoke(vararg param: Param): ApiJsonResponse = coroutineScope {
-        val url = baseUrl.newBuilder()
+        val responseChannel = Channel<ApiJsonResponse>()
+        execute(param.toList()).collect {
+            when (it) {
+                is ApiCall.ProgressStatus.Done<*> ->
+                    responseChannel.offer(it.resource as ApiJsonResponse)
+                is ApiCall.ProgressStatus.Canceled ->
+                    responseChannel.cancel(CancellationException("", it.err))
+                else -> {
+                }
+            }
+        }
+        responseChannel.receive()
+    }
+
+    @ExperimentalCoroutinesApi
+    override fun <T> execute(
+        params: List<Param>,
+        progressType: ApiCall.Progress,
+        transformer: (Response) -> T
+    ): Flow<ApiCall.ProgressStatus<T>> = callbackFlow {
+
+        val url = endpoint.baseUrl.toHttpUrl().newBuilder()
             .apply {
-                endpointParser.parse(*param).forEach {
+                endpointParser.parse(*params.toTypedArray()).forEach {
                     when (it) {
                         is EndpointParser.Token.Path -> addPathSegment(it.value)
                         is EndpointParser.Token.QueryParam -> addQueryParameter(it.name, it.value)
@@ -91,17 +198,78 @@ internal class ApiCallImpl(
                 }
             }
             .build()
-        val response = httpClient.newCall(request).executeCo()
-        if (response.isSuccessful) {
+        try {
+            if (progressType != ApiCall.Progress.Ignore) {
+                offer(ApiCall.ProgressStatus.Starting<T>())
+            }
+            val response = httpClient
+                .run {
+                    if (progressType == ApiCall.Progress.Ignore) {
+                        this
+                    } else {
+                        this.newBuilder()
+                            .withProgressListener { read, total, done ->
+                                if (!done) {
+                                    when (progressType) {
+                                        ApiCall.Progress.Percent -> offer(
+                                            ApiCall
+                                                .ProgressStatus
+                                                .Current<T>((read / total.toFloat()) * 100, total)
+                                        )
+                                        ApiCall.Progress.Raw -> offer(
+                                            ApiCall
+                                                .ProgressStatus
+                                                .Current<T>(read, total)
+                                        )
+                                        is ApiCall.Progress.ByStep -> if (read.rem(progressType.bytesToSkip) == 0) {
+                                            offer(
+                                                ApiCall
+                                                    .ProgressStatus
+                                                    .Current<T>(read, total)
+                                            )
+                                        }
+                                        else -> {
+                                            throw IllegalStateException("Unknown ApiCall progress")
+                                        }
+                                    }
+                                }
+                            }
+                            .build()
+                    }
+                }
+                .newCall(request)
+                .executeCo()
+            if (response.isSuccessful) {
+                offer(ApiCall.ProgressStatus.Done(transformer(response)))
+            } else {
+                offer(
+                    ApiCall.ProgressStatus.Canceled<T>(
+                        IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
+                    )
+                )
+            }
+        } catch (ex: Exception) {
+            offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+        } finally {
+            close()
+        }
+
+        awaitClose {}
+    }
+
+    @ExperimentalCoroutinesApi
+    override fun execute(
+        params: List<Param>,
+        progressType: ApiCall.Progress
+    ): Flow<ApiCall.ProgressStatus<ApiJsonResponse>> =
+        execute(params, progressType) { response ->
             val jsonReader = response.body?.charStream() ?: StringReader("{}")
             ApiJsonResponse(
+                { link -> ApiCallImpl(Endpoint(link), httpClient, accessKey, authToken) },
                 jsonReader,
                 ApiMeta(response.headers)
             )
-        } else {
-            throw IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
         }
-    }
 
     private fun createModifyForm(verb: Verb.Modify): RequestBody =
         FormBody.Builder()
