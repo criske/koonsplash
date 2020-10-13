@@ -219,7 +219,7 @@ internal class ApiCallImpl(
                                             val totalF = total.toFloat()
                                             val current = ((read / totalF) * 100).roundToInt()
                                             val last = ((lastRead / totalF) * 100).roundToInt()
-                                            if(current != last) {
+                                            if (current != last) {
                                                 offer(
                                                     ApiCall
                                                         .ProgressStatus
@@ -260,7 +260,7 @@ internal class ApiCallImpl(
                 )
             }
         } catch (ex: Exception) {
-            send(ApiCall.ProgressStatus.Canceled<T>(ex))
+            offer(ApiCall.ProgressStatus.Canceled<T>(ex))
         } finally {
             close()
         }
