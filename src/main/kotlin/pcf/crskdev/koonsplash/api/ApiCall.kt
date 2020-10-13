@@ -40,6 +40,7 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
 import pcf.crskdev.koonsplash.http.HttpClient.withProgressListener
 import java.io.StringReader
+import kotlin.math.roundToInt
 
 /**
  * API call.
@@ -211,14 +212,21 @@ internal class ApiCallImpl(
                         this
                     } else {
                         this.newBuilder()
-                            .withProgressListener { read, total, done ->
+                            .withProgressListener { read, lastRead, total, done ->
                                 if (!done) {
                                     when (progressType) {
-                                        ApiCall.Progress.Percent -> offer(
-                                            ApiCall
-                                                .ProgressStatus
-                                                .Current<T>((read / total.toFloat()) * 100, total)
-                                        )
+                                        ApiCall.Progress.Percent -> {
+                                            val totalF = total.toFloat()
+                                            val current = ((read / totalF) * 100).roundToInt()
+                                            val last = ((lastRead / totalF) * 100).roundToInt()
+                                            if(current != last) {
+                                                offer(
+                                                    ApiCall
+                                                        .ProgressStatus
+                                                        .Current<T>(current, total)
+                                                )
+                                            }
+                                        }
                                         ApiCall.Progress.Raw -> offer(
                                             ApiCall
                                                 .ProgressStatus
