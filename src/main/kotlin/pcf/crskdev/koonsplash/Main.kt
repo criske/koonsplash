@@ -68,7 +68,7 @@ fun main() {
                 .collect { status ->
                     when (status) {
                         is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
-                        is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}")
+                        is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}%")
                         is ApiCall.ProgressStatus.Done -> println("Done downloading")
                         is ApiCall.ProgressStatus.Starting -> println("Starting")
                     }

@@ -121,11 +121,13 @@ object HttpClient {
         private fun source(source: Source): Source {
             return object : ForwardingSource(source) {
                 var totalBytesRead = 0L
+                var lastBytesRead: Long = 0L
                 override fun read(sink: Buffer, byteCount: Long): Long {
                     val bytesRead = super.read(sink, byteCount)
                     // read() returns the number of bytes read, or -1 if this source is exhausted.
                     totalBytesRead += if (bytesRead != -1L) bytesRead else 0
-                    progressListener(totalBytesRead, responseBody.contentLength(), bytesRead == -1L)
+                    progressListener(totalBytesRead, lastBytesRead, responseBody.contentLength(), bytesRead == -1L)
+                    lastBytesRead = totalBytesRead
                     return bytesRead
                 }
             }
@@ -141,4 +143,4 @@ object HttpClient {
         }
 }
 
-typealias ProgressListener = (Long, Long, Boolean) -> Unit
+typealias ProgressListener = (Long, Long, Long, Boolean) -> Unit
