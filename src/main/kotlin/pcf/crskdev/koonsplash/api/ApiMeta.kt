@@ -21,13 +21,115 @@
 
 package pcf.crskdev.koonsplash.api
 
-import okhttp3.Headers
-
 /**
  * Api response "metadata". This contains info about rate limit and pagination.
  *
- * @property headers: Response headers.
+ * @property apiCall [ApiCall] required for opening page links.
+ * @property headers Multi map to extract limit and paging.
  * @author Cristian Pela
  * @since 0.1
  */
-class ApiMeta internal constructor(private val headers: Headers)
+class ApiMeta internal constructor(
+    private val apiCall: (String) -> ApiCall,
+    private val headers: Headers
+) {
+
+    val rateLimit: RateLimit = RateLimit.createRateLimit(headers)
+
+    val pagination: Pagination?
+        get() = headers["Link"]
+            ?.first()
+            ?.let { Pagination.createPagination(apiCall, it) }
+}
+
+/**
+ * Pagination header if present for [ApiJsonResponse].
+ *
+ * @property total Total pages.
+ * @property currentNumber Current page number.
+ * @property firstPage First page Link
+ * @property prevPage Previous page Link
+ * @property nextPage Next page Link
+ * @property lastPage Last page Link
+ * @constructor Create empty Pagination
+ */
+class Pagination(
+    val total: Int,
+    val currentNumber: Int,
+    val firstPage: Link.Api,
+    val prevPage: Link.Api?,
+    val nextPage: Link.Api?,
+    val lastPage: Link.Api?
+) {
+    companion object {
+        internal fun createPagination(
+            apiCall: (String) -> ApiCall,
+            headerValue: String
+        ): Pagination {
+            val links = mutableMapOf<String, String>()
+            var linkStarted = false
+            var relStarted = false
+            var link = ""
+            val builder = StringBuilder()
+            for (i in headerValue.indices) {
+                if (i > 0 && headerValue[i - 1] == '<') {
+                    linkStarted = true
+                } else if (headerValue[i] == '>') {
+                    linkStarted = false
+                    link = builder.toString()
+                    builder.setLength(0)
+                }
+                if (i > 0 && headerValue[i - 1] == '"' && headerValue[i] != ',') {
+                    relStarted = true
+                } else if (relStarted && headerValue[i] == '"') {
+                    relStarted = false
+                    require(link.isNotEmpty())
+                    links[builder.toString()] = link
+                    builder.setLength(0)
+                }
+                if (linkStarted || relStarted) {
+                    builder.append(headerValue[i])
+                }
+            }
+            val page: (String) -> Int = { it.split("page=")[1].toInt() }
+            val total = links["last"]?.let(page)
+                ?: links["prev"]?.let(page)?.inc()
+                ?: 1
+            val currentPageNo = links["prev"]?.let(page)?.inc()
+                ?: links["first"]?.let(page)
+                ?: 1
+            val firstPage = links["first"]?.let { Link.Api(it, apiCall) }
+                ?: throw IllegalStateException("First page in pagination header not found")
+            val prevPage = links["prev"]?.let { Link.Api(it, apiCall) }
+            val nextPage = links["next"]?.let { Link.Api(it, apiCall) }
+            val lastPage = links["last"]?.let { Link.Api(it, apiCall) }
+            return Pagination(total, currentPageNo, firstPage, prevPage, nextPage, lastPage)
+        }
+    }
+}
+
+/**
+ * Rate limit header for [ApiJsonResponse]
+ *
+ * @property limit Limit
+ * @property remaining Remaining api calls.
+ * @constructor Create empty Rate limit
+ */
+class RateLimit internal constructor(val limit: Int, val remaining: Int) {
+
+    object ReachedException : Exception()
+
+    companion object {
+
+        internal fun createRateLimit(headers: Headers): RateLimit {
+            val limit = headers["X-Ratelimit-Limit"]?.first()?.toInt()
+                ?: Int.MAX_VALUE
+            val remaining = headers["X-Ratelimit-Remaining"]?.first()?.toInt()
+                ?: Int.MAX_VALUE
+            if (remaining <= 0) {
+                throw ReachedException
+            }
+            return RateLimit(limit, remaining)
+        }
+    }
+}

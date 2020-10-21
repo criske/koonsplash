@@ -25,7 +25,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
-import okhttp3.Headers
 import java.io.StringReader
 
 internal class ApiJsonResponseTest : StringSpec({
@@ -33,7 +32,7 @@ internal class ApiJsonResponseTest : StringSpec({
     val response = ApiJsonResponse(
         { mockk() },
         StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
-        ApiMeta(Headers.Builder().build())
+        emptyMap()
     )
 
     "should traverse the json tree" {
