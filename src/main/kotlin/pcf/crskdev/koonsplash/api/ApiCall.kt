@@ -277,7 +277,7 @@ internal class ApiCallImpl(
             ApiJsonResponse(
                 { link -> ApiCallImpl(Endpoint(link), httpClient, accessKey, authToken) },
                 jsonReader,
-                ApiMeta(response.headers)
+                response.headers.toMultimap()
             )
         }
 

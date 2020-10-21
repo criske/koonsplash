@@ -39,21 +39,23 @@ import java.io.Reader
  * The ApiJson invocation ([ApiJson.invoke]) will try to get a value of String, Boolean, Number and Link.
  *
  * @property apiCall [ApiCall] required for opening links
- * @property reader [Reader]
- * @property meta [ApiMeta]
+ * @property reader [Reader] for parsing the response.
+ * @property headers to extract limit and paging for ApiMeta.
  * @author Cristian Pela
  * @since 0.1
  */
 class ApiJsonResponse internal constructor(
     private val apiCall: (String) -> ApiCall,
     private val reader: Reader,
-    val meta: ApiMeta
+    private val headers: Headers,
 ) {
 
     /**
      * Root json element from response.
      */
     private val jsonEl = ApiJson(apiCall, JsonParser.parseReader(reader))
+
+    val meta = ApiMeta(apiCall, headers)
 
     /**
      * Gets an ApiJson element based on:

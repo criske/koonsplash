@@ -21,14 +21,31 @@
 
 package pcf.crskdev.koonsplash.api
 
-internal typealias FormEntry = Pair<String, String>
-typealias Param = Any
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-/**
- * Selector for a json response [ApiJsonResponse.ApiJson]. Should be String or Int.
- */
-typealias Selector = Comparable<*>
-/**
- * Headers as string multi map
- */
-typealias Headers = Map<String, List<String>>
+internal class RateLimitTest : StringSpec({
+
+    "should parse rate limit" {
+        val rateLimit = RateLimit.createRateLimit(
+            mapOf(
+                "X-Ratelimit-Limit" to listOf("1000"),
+                "X-Ratelimit-Remaining" to listOf("999")
+            )
+        )
+        rateLimit.limit shouldBe 1000
+        rateLimit.remaining shouldBe 999
+    }
+
+    "should throw when limit reached" {
+        shouldThrow<RateLimit.ReachedException> {
+            RateLimit.createRateLimit(
+                mapOf(
+                    "X-Ratelimit-Limit" to listOf("1000"),
+                    "X-Ratelimit-Remaining" to listOf("0")
+                )
+            )
+        }
+    }
+})
