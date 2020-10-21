@@ -34,12 +34,17 @@ class ApiMeta internal constructor(
     private val headers: Headers
 ) {
 
+    /**
+     * Api calls rate limit.
+     */
     val rateLimit: RateLimit = RateLimit.createRateLimit(headers)
 
-    val pagination: Pagination?
-        get() = headers["Link"]
-            ?.first()
-            ?.let { Pagination.createPagination(apiCall, it) }
+    /**
+     * Pagination, might be null.
+     */
+    val pagination: Pagination? = headers["Link"]
+        ?.first()
+        ?.let { Pagination.createPagination(apiCall, it) }
 }
 
 /**
@@ -62,6 +67,7 @@ class Pagination(
     val lastPage: Link.Api?
 ) {
     companion object {
+
         internal fun createPagination(
             apiCall: (String) -> ApiCall,
             headerValue: String
