@@ -31,9 +31,8 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
-import okio.buffer
-import okio.sink
 import java.io.File
+import java.io.FileOutputStream
 import java.net.URI
 
 /**
@@ -149,14 +148,24 @@ sealed class Link(protected val url: String) {
                         is ApiCall.ProgressStatus.Done -> {
                             val downloadUrl: String = it.resource["url"]()
                             apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
-                                val ext = response.headers["Content-Type"]?.toMediaType()?.subtype ?: "jpg"
+                                val ext = response.headers["Content-Type"]
+                                    ?.first()
+                                    ?.toMediaType()
+                                    ?.subtype ?: "jpg"
                                 val file = File(dir, "$fileName.$ext")
-                                response.body?.source()?.use { input ->
-                                    file.sink().buffer().use { output ->
-                                        output.writeAll(input)
+                                response.stream.use { input ->
+                                    val buffer = ByteArray(1024)
+                                    FileOutputStream(file).use { fos ->
+                                        while (true) {
+                                            val count = input.read(buffer)
+                                            if (count < 0) {
+                                                break
+                                            }
+                                            fos.write(buffer, 0, count)
+                                        }
                                     }
+                                    Photo(file.absolutePath)
                                 }
-                                Photo(file.absolutePath)
                             }
                         }
                         is ApiCall.ProgressStatus.Canceled -> throw it.err

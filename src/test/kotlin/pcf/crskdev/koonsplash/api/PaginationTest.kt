@@ -26,6 +26,16 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 
 internal class PaginationTest : StringSpec({
+    "should parse link header when on first page" {
+        val link = "<https://api.unsplash.com/photos?page=20182>; rel=\"last\", <https://api.unsplash.com/photos?page=2>; rel=\"next\""
+        val pagination = Pagination.createPagination({ mockk() }, link)
+        pagination.currentNumber shouldBe 1
+        pagination.total shouldBe 20182
+        pagination.firstPage shouldBe null
+        pagination.prevPage shouldBe null
+        pagination.nextPage?.toString() shouldBe "https://api.unsplash.com/photos?page=2"
+        pagination.lastPage?.toString() shouldBe "https://api.unsplash.com/photos?page=20182"
+    }
 
     "should fully parse link header with all page links for page 2" {
         val link =
@@ -47,7 +57,7 @@ internal class PaginationTest : StringSpec({
         pagination.total shouldBe 20149
         pagination.firstPage.toString() shouldBe "https://api.unsplash.com/photos?page=1"
         pagination.prevPage?.toString() shouldBe "https://api.unsplash.com/photos?page=20148"
-        pagination.nextPage?.toString() shouldBe null
-        pagination.lastPage?.toString() shouldBe null
+        pagination.nextPage shouldBe null
+        pagination.lastPage shouldBe null
     }
 })
