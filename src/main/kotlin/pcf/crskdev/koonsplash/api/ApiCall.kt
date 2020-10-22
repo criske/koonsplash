@@ -108,21 +108,6 @@ interface ApiCall {
          * @constructor Create empty Raw
          */
         object Raw : Progress()
-
-        /**
-         * Progress will be shown by a step of skipped bytes.
-         *
-         * @property bytesToSkip Bytes to skip.
-         * @constructor Create empty By step
-         */
-        class ByStep(val bytesToSkip: Long) : Progress() {
-
-            init {
-                require(bytesToSkip > 0) {
-                    "Minimum step should at least 1 byte/"
-                }
-            }
-        }
     }
 
     /**
@@ -232,13 +217,6 @@ internal class ApiCallImpl(
                                                 .ProgressStatus
                                                 .Current<T>(read, total)
                                         )
-                                        is ApiCall.Progress.ByStep -> if (read.rem(progressType.bytesToSkip) == 0) {
-                                            offer(
-                                                ApiCall
-                                                    .ProgressStatus
-                                                    .Current<T>(read, total)
-                                            )
-                                        }
                                         else -> {
                                             throw IllegalStateException("Unknown ApiCall progress")
                                         }
