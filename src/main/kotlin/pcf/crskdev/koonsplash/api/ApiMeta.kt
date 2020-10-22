@@ -61,7 +61,7 @@ class ApiMeta internal constructor(
 class Pagination(
     val total: Int,
     val currentNumber: Int,
-    val firstPage: Link.Api,
+    val firstPage: Link.Api?,
     val prevPage: Link.Api?,
     val nextPage: Link.Api?,
     val lastPage: Link.Api?
@@ -102,10 +102,10 @@ class Pagination(
                 ?: links["prev"]?.let(page)?.inc()
                 ?: 1
             val currentPageNo = links["prev"]?.let(page)?.inc()
+                ?: links["next"]?.let(page)?.dec()
                 ?: links["first"]?.let(page)
                 ?: 1
             val firstPage = links["first"]?.let { Link.Api(it, apiCall) }
-                ?: throw IllegalStateException("First page in pagination header not found")
             val prevPage = links["prev"]?.let { Link.Api(it, apiCall) }
             val nextPage = links["next"]?.let { Link.Api(it, apiCall) }
             val lastPage = links["last"]?.let { Link.Api(it, apiCall) }

@@ -39,6 +39,8 @@ import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
 import pcf.crskdev.koonsplash.http.HttpClient.withProgressListener
+import java.io.InputStream
+import java.io.Reader
 import java.io.StringReader
 import kotlin.math.roundToInt
 
@@ -61,7 +63,7 @@ interface ApiCall {
      *
      * @param params Params
      * @param progressType Progress Type default [Progress.Ignore]
-     * @param transformer Transforms a successful response to [T]
+     * @param transformer Transforms a successful response stream to [T]
      * @return ProgressStatus stream
      */
     fun <T> execute(
@@ -121,6 +123,44 @@ interface ApiCall {
         class Done<T>(val resource: T) : ProgressStatus<T>()
         class Starting<T> : ProgressStatus<T>()
     }
+
+    /**
+     * Abstracts the response.
+     *
+     * @constructor Create empty Response
+     */
+    interface Response {
+
+        /**
+         * Response body as byte stream.
+         */
+        val stream: InputStream
+
+        /**
+         * Response body as char reader.
+         */
+        val reader: Reader
+
+        /**
+         * Headers multi map
+         */
+        val headers: Headers
+
+        /**
+         * Content type
+         */
+        val contentType: String
+
+        /**
+         * Content sub type
+         */
+        val contentSubType: String
+
+        /**
+         * Code.
+         */
+        val code: Int
+    }
 }
 
 /**
@@ -154,15 +194,14 @@ internal class ApiCallImpl(
                 }
             }
         }
-        var receive = responseChannel.receive()
-        receive
+        responseChannel.receive()
     }
 
     @ExperimentalCoroutinesApi
     override fun <T> execute(
         params: List<Param>,
         progressType: ApiCall.Progress,
-        transformer: (Response) -> T
+        transformer: (ApiCall.Response) -> T
     ): Flow<ApiCall.ProgressStatus<T>> = callbackFlow {
 
         val url = endpoint.baseUrl.toHttpUrl().newBuilder()
@@ -205,11 +244,7 @@ internal class ApiCallImpl(
                                             val current = ((read / totalF) * 100).roundToInt()
                                             val last = ((lastRead / totalF) * 100).roundToInt()
                                             if (current != last) {
-                                                offer(
-                                                    ApiCall
-                                                        .ProgressStatus
-                                                        .Current<T>(current, total)
-                                                )
+                                                offer(ApiCall.ProgressStatus.Current<T>(current, total))
                                             }
                                         }
                                         ApiCall.Progress.Raw -> offer(
@@ -229,7 +264,7 @@ internal class ApiCallImpl(
                 .newCall(request)
                 .executeCo()
             if (response.isSuccessful) {
-                offer(ApiCall.ProgressStatus.Done(transformer(response)))
+                offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttp(response))))
             } else {
                 offer(
                     ApiCall.ProgressStatus.Canceled<T>(
@@ -251,11 +286,11 @@ internal class ApiCallImpl(
         progressType: ApiCall.Progress
     ): Flow<ApiCall.ProgressStatus<ApiJsonResponse>> =
         execute(params, progressType) { response ->
-            val jsonReader = response.body?.charStream() ?: StringReader("{}")
+            val jsonReader = response.reader
             ApiJsonResponse(
                 { link -> ApiCallImpl(Endpoint(link), httpClient, accessKey, authToken) },
                 jsonReader,
-                response.headers.toMultimap()
+                response.headers
             )
         }
 
@@ -276,4 +311,16 @@ internal class ApiCallImpl(
                     addHeader("Authorization", "Bearer ${authToken.accessToken}")
                 }
             }
+
+    private class ResponseOkHttp(response: Response) : ApiCall.Response {
+        override val stream: InputStream = response.body?.byteStream()
+            ?: object : InputStream() {
+                override fun read(): Int = -1
+            }
+        override val reader: Reader = response.body?.charStream() ?: StringReader("{}")
+        override val headers: Headers = response.headers.toMultimap()
+        override val contentType: String = response.body?.contentType()?.toString() ?: ""
+        override val contentSubType: String = response.body?.contentType()?.subtype ?: ""
+        override val code: Int = response.code
+    }
 }
