@@ -34,6 +34,7 @@ import pcf.crskdev.koonsplash.auth.LoginFormController
 import pcf.crskdev.koonsplash.auth.OneShotLoginFormController
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
+import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
 
 /**
  * Koonsplash entry point.
@@ -41,7 +42,7 @@ import pcf.crskdev.koonsplash.internal.KoonsplashImpl
  * @author Cristian Pela
  * @since 0.1
  */
-interface Koonsplash {
+interface Koonsplash : KoonsplashEntry {
 
     /**
      * Api
@@ -71,7 +72,7 @@ interface Koonsplash {
      * Koonsplash entry point for authenticated requests.
      *
      */
-    interface Auth {
+    interface Auth : KoonsplashEntry {
 
         val api: ApiAuth
 
@@ -91,6 +92,13 @@ interface Koonsplash {
             KoonsplashBuilder(keysLoader, storage)
     }
 }
+
+/**
+ * Flag that marks entries for this lib.
+ *
+ * @constructor Create empty Flag
+ */
+interface KoonsplashEntry
 
 /**
  * Koonsplash builder.
@@ -121,6 +129,6 @@ class KoonsplashBuilder internal constructor(
 
     fun build(): Koonsplash {
         val authorizer = AuthorizerImpl(this.keysLoader.accessKey, this.keysLoader.secretKey)
-        return KoonsplashImpl(this.keysLoader.accessKey, this.storage, HttpClient.http, authorizer)
+        return KoonsplashSingleton(KoonsplashImpl(this.keysLoader.accessKey, this.storage, HttpClient.http, authorizer))
     }
 }
