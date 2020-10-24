@@ -24,6 +24,8 @@ package pcf.crskdev.koonsplash.api
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.core.test.TestContext
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.toList
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -35,8 +37,11 @@ import okio.Buffer
 import okio.source
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
+import java.net.URI
 import java.util.UUID
 
+@ExperimentalCoroutinesApi
+@FlowPreview
 internal class LinkTest : StringSpec({
 
     val server = MockWebServer()
@@ -90,18 +95,21 @@ internal class LinkTest : StringSpec({
             }
         }
 
-        val link = Link.Download(HttpClient.apiBaseUrl + "photos/Dwu85P9SOIk/download", apiCallProvider)
+        val link = Link.Download(
+            URI.create(HttpClient.apiBaseUrl + "photos/Dwu85P9SOIk/download"),
+            apiCallProvider
+        )
         val statuses = link
             .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
         statuses.find<LinkPhotoStatusCanceled>()?.apply { throw err }
-        val filePath = statuses.find<LinkPhotoStatusDone>()?.resource?.url
-        requireNotNull(filePath)
+        val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
+        requireNotNull(fileUri)
 
-        filePath.endsWith("photo_test_downloaded.png") shouldBe true
+        fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
 
         // cleanup
-        File(filePath).delete()
+        assert(File(fileUri.path).delete())
     }
 })
 
@@ -115,5 +123,5 @@ private fun TestContext.dispatcher(requestBlock: RecordedRequest.() -> MockRespo
 private inline fun <reified T : ApiCall.ProgressStatus<Link.Photo>> List<ApiCall.ProgressStatus<Link.Photo>>.find(): T? =
     find { it is T } as T?
 
-typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Photo>
-typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Photo>
+private typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Photo>
+private typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Photo>

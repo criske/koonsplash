@@ -21,6 +21,8 @@
 
 package pcf.crskdev.koonsplash.api
 
+import java.net.URI
+
 /**
  * Api response "metadata". This contains info about rate limit and pagination.
  *
@@ -105,10 +107,10 @@ class Pagination(
                 ?: links["next"]?.let(page)?.dec()
                 ?: links["first"]?.let(page)
                 ?: 1
-            val firstPage = links["first"]?.let { Link.Api(it, apiCall) }
-            val prevPage = links["prev"]?.let { Link.Api(it, apiCall) }
-            val nextPage = links["next"]?.let { Link.Api(it, apiCall) }
-            val lastPage = links["last"]?.let { Link.Api(it, apiCall) }
+            val firstPage = links["first"]?.let { Link.Api(URI.create(it), apiCall) }
+            val prevPage = links["prev"]?.let { Link.Api(URI.create(it), apiCall) }
+            val nextPage = links["next"]?.let { Link.Api(URI.create(it), apiCall) }
+            val lastPage = links["last"]?.let { Link.Api(URI.create(it), apiCall) }
             return Pagination(total, currentPageNo, firstPage, prevPage, nextPage, lastPage)
         }
     }
