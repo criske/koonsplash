@@ -45,9 +45,9 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
-sealed class Link(val url: String) {
+sealed class Link(val url: URI) {
 
-    override fun toString(): String = this.url
+    override fun toString(): String = this.url.toString()
 
     companion object {
 
@@ -63,13 +63,13 @@ sealed class Link(val url: String) {
             return when (uri.authority) {
                 HttpClient.apiBaseUrl -> {
                     if (uri.path?.endsWith("download") == true) {
-                        Download(url, apiCall)
+                        Download(uri, apiCall)
                     } else {
-                        Api(url, apiCall)
+                        Api(uri, apiCall)
                     }
                 }
-                HttpClient.imagesBaseUrl -> Photo(url)
-                else -> Browser(url)
+                HttpClient.imagesBaseUrl -> Photo(uri)
+                else -> Browser(uri)
             }
         }
     }
@@ -81,14 +81,14 @@ sealed class Link(val url: String) {
      * @constructor
      * @param url URL
      */
-    class Api(url: String, private val apiCall: (String) -> ApiCall) : Link(url) {
+    class Api(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
 
         /**
          * Calls the link URL.
          *
          * @return ApiJsonResponse
          */
-        suspend fun call(): ApiJsonResponse = coroutineScope { apiCall(url)() }
+        suspend fun call(): ApiJsonResponse = coroutineScope { apiCall(url.toString())() }
     }
 
     /**
@@ -102,7 +102,7 @@ sealed class Link(val url: String) {
      *
      * @param url Url
      */
-    class Browser(url: String) : Link(url) {
+    class Browser(url: URI) : Link(url) {
 
         /**
          * Open the link in a platform browser.
@@ -110,7 +110,7 @@ sealed class Link(val url: String) {
          * @param launcher Launching block
          * @receiver Launching block
          */
-        suspend fun open(launcher: suspend (String) -> Unit) = coroutineScope {
+        suspend fun open(launcher: suspend (URI) -> Unit) = coroutineScope {
             launch {
                 launcher(url)
             }
@@ -125,7 +125,7 @@ sealed class Link(val url: String) {
      * @param url Photo link url.
      * @param apiCall [ApiCall] required for download the link.
      */
-    class Download(url: String, private val apiCall: (String) -> ApiCall) : Link(url) {
+    class Download(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
 
         /**
          * Downloads a photo to a file.
@@ -146,7 +146,7 @@ sealed class Link(val url: String) {
             dispatcher: CoroutineDispatcher = Dispatchers.Default,
             bufferSize: Int = 1024,
         ): Flow<ApiCall.ProgressStatus<Photo>> {
-            return apiCall(url)
+            return apiCall(url.toString())
                 .execute(emptyList(), ApiCall.Progress.Ignore)
                 .flatMapConcat {
                     when (it) {
@@ -169,7 +169,7 @@ sealed class Link(val url: String) {
                                             fos.write(buffer, 0, count)
                                         }
                                     }
-                                    Photo(file.absolutePath)
+                                    Photo(file.toURI())
                                 }
                             }
                         }
@@ -188,7 +188,7 @@ sealed class Link(val url: String) {
      *
      * @param url
      */
-    class Photo(url: String) : Link(url)
+    class Photo(url: URI) : Link(url)
 }
 
 /**
