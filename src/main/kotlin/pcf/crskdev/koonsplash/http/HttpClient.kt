@@ -46,7 +46,12 @@ import kotlin.coroutines.resumeWithException
  * @author Cristian Pela
  * @since 0.1
  */
-object HttpClient {
+internal object HttpClient {
+
+    var apiBaseUrl = "api.unsplash.com"
+
+    var imagesBaseUrl = "images.unsplash.com"
+
     val http = OkHttpClient.Builder()
         .cookieJar(
             JavaNetCookieJar(

@@ -24,6 +24,7 @@ package pcf.crskdev.koonsplash.api
 import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
+import pcf.crskdev.koonsplash.http.HttpClient
 
 /**
  * Api authenticated endpoints.
@@ -57,5 +58,5 @@ class ApiAuthImpl(
     }
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint("https://api.unsplash.com/", endpoint, verb), httpClient, accessKey, authToken)
+        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl, endpoint, verb), httpClient, accessKey, authToken)
 }
