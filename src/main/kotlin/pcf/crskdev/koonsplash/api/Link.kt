@@ -25,12 +25,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
+import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
@@ -42,7 +45,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
-sealed class Link(protected val url: String) {
+sealed class Link(val url: String) {
 
     override fun toString(): String = this.url
 
@@ -58,14 +61,14 @@ sealed class Link(protected val url: String) {
         fun create(apiCall: (String) -> ApiCall, url: String): Link {
             val uri = URI.create(url)
             return when (uri.authority) {
-                "api.unsplash.com" -> {
+                HttpClient.apiBaseUrl -> {
                     if (uri.path?.endsWith("download") == true) {
                         Download(url, apiCall)
                     } else {
                         Api(url, apiCall)
                     }
                 }
-                "images.unsplash.com" -> Photo(url)
+                HttpClient.imagesBaseUrl -> Photo(url)
                 else -> Browser(url)
             }
         }
@@ -131,6 +134,7 @@ sealed class Link(protected val url: String) {
          * @param fileName File name.
          * @param progressType ApiCall.Progress
          * @param dispatcher CoroutineDispatcher
+         * @param bufferSize Download to disk buffer size in bytes.
          * @receiver
          */
         @FlowPreview
@@ -139,7 +143,8 @@ sealed class Link(protected val url: String) {
             dir: File,
             fileName: String,
             progressType: ApiCall.Progress = ApiCall.Progress.Percent,
-            dispatcher: CoroutineDispatcher = Dispatchers.Default
+            dispatcher: CoroutineDispatcher = Dispatchers.Default,
+            bufferSize: Int = 1024,
         ): Flow<ApiCall.ProgressStatus<Photo>> {
             return apiCall(url)
                 .execute(emptyList(), ApiCall.Progress.Ignore)
@@ -154,7 +159,7 @@ sealed class Link(protected val url: String) {
                                     ?.subtype ?: "jpg"
                                 val file = File(dir, "$fileName.$ext")
                                 response.stream.use { input ->
-                                    val buffer = ByteArray(1024)
+                                    val buffer = ByteArray(bufferSize)
                                     FileOutputStream(file).use { fos ->
                                         while (true) {
                                             val count = input.read(buffer)
@@ -184,4 +189,38 @@ sealed class Link(protected val url: String) {
      * @param url
      */
     class Photo(url: String) : Link(url)
+}
+
+/**
+ * Download a photo to disk.
+ *
+ * @param dir File location
+ * @param fileName File name.
+ * @param dispatcher CoroutineDispatcher
+ * @param bufferSize Download to disk buffer size in bytes.
+ * @return Link to the saved photo.
+ */
+@ExperimentalCoroutinesApi
+@FlowPreview
+suspend fun Link.Download.downloadToPhoto(
+    dir: File,
+    fileName: String,
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    bufferSize: Int = 1024,
+): Link.Photo = coroutineScope {
+    val channel = Channel<Link.Photo>()
+    download(dir, fileName, ApiCall.Progress.Ignore, dispatcher, bufferSize)
+        .collect {
+            when (it) {
+                is ApiCall.ProgressStatus.Done<*> ->
+                    launch {
+                        channel.send(it.resource as Link.Photo)
+                    }
+                is ApiCall.ProgressStatus.Canceled ->
+                    throw it.err
+                else -> {
+                }
+            }
+        }
+    channel.receive()
 }

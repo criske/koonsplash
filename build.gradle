@@ -79,6 +79,7 @@ dependencies {
     testImplementation "io.kotest:kotest-assertions-core:${kotest}" // for kotest core jvm assertions
     testImplementation "io.kotest:kotest-property:${kotest}" // for kotest property test
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.3.9'
+    testImplementation "com.squareup.okhttp3:mockwebserver:4.9.0"
 }
 
 compileKotlin {
