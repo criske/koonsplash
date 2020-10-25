@@ -25,6 +25,9 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonNull
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.internal.LazilyParsedNumber
+import java.io.Reader
 
 /**
  * Api response json model tree backed by gson.
@@ -36,9 +39,31 @@ import com.google.gson.JsonObject
  * @since 0.1
  */
 class ApiJson internal constructor(
-    @PublishedApi internal val apiCall: (String) -> ApiCall,
-    @PublishedApi internal val jsonEl: JsonElement
+    @PublishedApi internal val jsonEl: JsonElement,
+    @PublishedApi internal val apiCall: (String) -> ApiCall
 ) {
+
+    companion object {
+
+        /**
+         * Create ApiJson from reader
+         *
+         * @param reader Reader
+         * @param apiCall Api Call provider
+         */
+        internal fun createFromReader(reader: Reader, apiCall: (String) -> ApiCall) =
+            ApiJson(JsonParser.parseReader(reader), apiCall)
+
+        /**
+         * Create ApiJson from string mainly used as convenience method in tests.
+         *
+         * @param json String
+         * @param apiCall Api Call provider
+         * @receiver
+         */
+        internal fun createFromString(json: String, apiCall: (String) -> ApiCall) =
+            ApiJson(JsonParser.parseString(json), apiCall)
+    }
 
     /**
      * Try to get a value of String, Boolean, Number, Link associated with this json key.
@@ -52,16 +77,36 @@ class ApiJson internal constructor(
             return Link.create(this.apiCall, this.jsonEl.asString) as T
         }
         return when (kClass) {
+            Number::class -> (this.jsonEl.asNumber as LazilyParsedNumber).toKotlinNumber()
             Int::class -> this.jsonEl.asInt
+            Long::class -> this.jsonEl.asLong
             Double::class -> this.jsonEl.asDouble
             Float::class -> this.jsonEl.asFloat
-            Short::class -> this.jsonEl.asShort
             String::class -> this.jsonEl.asString
             Boolean::class -> this.jsonEl.asBoolean
             else -> throw IllegalStateException(
                 "Type not supported ${T::class}. Available types are: Number, String, Boolean, Link."
             )
         } as T
+    }
+
+    @PublishedApi
+    internal fun LazilyParsedNumber.toKotlinNumber(): Number {
+        val value = this.toString()
+        return if (value.contains(".")) {
+            if (value.endsWith("f", true)) {
+                this.toFloat()
+            } else {
+                this.toDouble()
+            }
+        } else {
+            val num = this.toLong()
+            if (num in Int.MIN_VALUE..Int.MAX_VALUE) {
+                num.toInt()
+            } else {
+                num
+            }
+        }
     }
 
     /**
@@ -83,7 +128,17 @@ class ApiJson internal constructor(
                 "Invalid selector ${selector::class.java}. Only strings or integers are permitted."
             )
         }
-        return ApiJson(this.apiCall, element)
+        return ApiJson(element, this.apiCall)
+    }
+
+    /**
+     * Checks if the ApiJson's wrapped element is empty.
+     */
+    val isEmpty: Boolean = when (jsonEl) {
+        is JsonArray -> jsonEl.size() == 0
+        is JsonObject -> jsonEl.size() == 0
+        is JsonNull -> true
+        else -> jsonEl.toString().isBlank()
     }
 
     override fun toString(): String {
