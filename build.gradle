@@ -31,10 +31,7 @@ jacocoTestReport {
     }
     afterEvaluate {
         getClassDirectories().setFrom(classDirectories.files.collect {
-            fileTree(dir: it,
-                    exclude: ['pcf/crskdev/koonsplash/**.class',
-                              'pcf/crskdev/koonsplash/http/**',
-                              'pcf/crskdev/koonsplash/json/**'])
+            fileTree(dir: it)
         })
     }
 }
