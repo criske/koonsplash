@@ -76,5 +76,5 @@ internal class ApiImpl(
 ) : Api {
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl, endpoint, verb), httpClient, accessKey, null)
+        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, accessKey, null)
 }

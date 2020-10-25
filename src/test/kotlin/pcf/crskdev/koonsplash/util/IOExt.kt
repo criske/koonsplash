@@ -19,44 +19,30 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api
+package pcf.crskdev.koonsplash.util
 
-import okhttp3.OkHttpClient
-import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthToken
-import pcf.crskdev.koonsplash.http.HttpClient
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.RecordedRequest
+import okio.Buffer
+import okio.source
+import java.io.File
 
-/**
- * Api authenticated endpoints.
- *
- * @author Cristian Pela
- * @since 0.1
- */
-interface ApiAuth : Api {
-
-    suspend fun me()
-}
-
-/**
- * Api auth implementation.
- *
- * @property httpClient Http client.
- * @property accessKey Access key.
- * @property authToken Auth token.
- * @constructor
- * @param api Delegates unauthenticated API.
- */
-class ApiAuthImpl(
-    api: Api,
-    private val httpClient: OkHttpClient,
-    private val accessKey: AccessKey,
-    private val authToken: AuthToken
-) : ApiAuth, Api by api {
-
-    override suspend fun me() {
-        TODO("Not yet implemented")
+fun MockResponse.setBodyFromFile(filePath: String): MockResponse = setBody(
+    Buffer().apply {
+        writeAll(
+            javaClass
+                .classLoader
+                .getResource(filePath)!!
+                .openStream()
+                .source()
+        )
     }
+)
 
-    override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, accessKey, authToken)
-}
+fun fileFromPath(vararg segments: String): File = File(segments.joinToString(File.separator))
+
+fun dispatcher(requestBlock: RecordedRequest.() -> MockResponse): Dispatcher =
+    object : Dispatcher() {
+        override fun dispatch(request: RecordedRequest): MockResponse = request.run(requestBlock)
+    }

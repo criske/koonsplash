@@ -21,6 +21,8 @@
 
 package pcf.crskdev.koonsplash.api
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.io.Reader
 
@@ -53,7 +55,12 @@ class ApiJsonResponse internal constructor(
     /**
      * Root json element from response.
      */
-    private val jsonEl = ApiJson(apiCall, JsonParser.parseReader(reader))
+    private val element = JsonParser.parseReader(reader)
+
+    /**
+     * ApiJson wrapping json element
+     */
+    private val apiJson = ApiJson(apiCall, element)
 
     val meta = ApiMeta(apiCall, headers)
 
@@ -68,7 +75,17 @@ class ApiJsonResponse internal constructor(
      * @param selector String or Int
      * @return [ApiJson]
      */
-    operator fun get(selector: Selector): ApiJson = this.jsonEl[selector]
+    operator fun get(selector: Selector): ApiJson = this.apiJson[selector]
 
-    override fun toString(): String = this.jsonEl.toString()
+    /**
+     * Check if JsonResponse is Empty
+     */
+    val isEmpty
+        get() = when (element) {
+            is JsonArray -> element.size() == 0
+            is JsonObject -> element.size() == 0
+            else -> element.toString().isBlank()
+        }
+
+    override fun toString(): String = this.apiJson.toString()
 }

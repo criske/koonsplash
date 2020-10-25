@@ -38,6 +38,7 @@ import pcf.crskdev.koonsplash.json.JsonClient
 import java.io.IOException
 import java.net.CookieManager
 import java.net.CookiePolicy
+import java.net.URI
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -48,9 +49,9 @@ import kotlin.coroutines.resumeWithException
  */
 internal object HttpClient {
 
-    var apiBaseUrl = "api.unsplash.com"
+    var apiBaseUrl = URI.create("https://api.unsplash.com/")
 
-    var imagesBaseUrl = "images.unsplash.com"
+    var imagesBaseUrl = URI.create("https://images.unsplash.com/")
 
     val http = OkHttpClient.Builder()
         .cookieJar(

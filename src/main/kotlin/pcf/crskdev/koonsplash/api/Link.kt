@@ -30,6 +30,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
@@ -61,14 +62,14 @@ sealed class Link(val url: URI) {
         fun create(apiCall: (String) -> ApiCall, url: String): Link {
             val uri = URI.create(url)
             return when (uri.authority) {
-                HttpClient.apiBaseUrl -> {
+                HttpClient.apiBaseUrl.authority -> {
                     if (uri.path?.endsWith("download") == true) {
                         Download(uri, apiCall)
                     } else {
                         Api(uri, apiCall)
                     }
                 }
-                HttpClient.imagesBaseUrl -> Photo(uri)
+                HttpClient.imagesBaseUrl.authority -> Photo(uri)
                 else -> Browser(uri)
             }
         }
@@ -96,26 +97,13 @@ sealed class Link(val url: URI) {
      * unsplash (external links like portfolio, author site etc...), or links that have their url
      * not part of _api.unsplash.com_ domain.
      *
-     * It's up to client to launch this link in a browser. See [Browser.open]
+     * It's up to client to launch this link in a browser.
      *
      * @constructor
      *
      * @param url Url
      */
-    class Browser(url: URI) : Link(url) {
-
-        /**
-         * Open the link in a platform browser.
-         *
-         * @param launcher Launching block
-         * @receiver Launching block
-         */
-        suspend fun open(launcher: suspend (URI) -> Unit) = coroutineScope {
-            launch {
-                launcher(url)
-            }
-        }
-    }
+    class Browser(url: URI) : Link(url)
 
     /**
      * Downloads a photo.
@@ -169,11 +157,11 @@ sealed class Link(val url: URI) {
                                             fos.write(buffer, 0, count)
                                         }
                                     }
-                                    Photo(file.toURI())
+                                    Link.Photo(file.toURI())
                                 }
                             }
                         }
-                        is ApiCall.ProgressStatus.Canceled -> throw it.err
+                        is ApiCall.ProgressStatus.Canceled -> flowOf(ApiCall.ProgressStatus.Canceled(it.err))
                         else -> throw IllegalStateException("Should not reach here: $it")
                     }
                 }
