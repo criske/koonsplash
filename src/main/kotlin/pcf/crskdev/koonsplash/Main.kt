@@ -58,6 +58,8 @@ fun main() {
 
             val me = api.call("/me")()
 
+            println(me)
+
             val myLikesLink: Link.Api = me["links"]["likes"]()
             val firstLikedPhoto = myLikesLink.call()[0]
             val downloadLink: Link.Download = firstLikedPhoto["links"]["download_location"]()

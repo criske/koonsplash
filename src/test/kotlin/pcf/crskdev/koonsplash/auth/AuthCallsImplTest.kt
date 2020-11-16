@@ -19,43 +19,34 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api
+package pcf.crskdev.koonsplash.auth
 
-import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.shouldFail
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
-import io.mockk.mockk
-import java.io.StringReader
 
-internal class ApiJsonResponseTest : StringSpec({
+internal class AuthCallsImplTest : StringSpec({
 
-    val response = ApiJsonResponse(
-        { mockk() },
-        StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
-        emptyMap()
-    )
-
-    "should traverse the json tree" {
-        response[0]["message"]<String>() shouldBe "Hi"
-        response[0]["place"]["name"]<String>() shouldBe "World"
+    "should authorize" {
+        shouldFail { }
     }
 
-    "should throw if selector key is not a string or int" {
-        shouldThrow<IllegalStateException> {
-            val badSelector = object : Comparable<Any> {
-                override fun compareTo(other: Any): Int = 0
-            }
-            response[badSelector]
-        }
+    "should authorize fail with require login" {
+        shouldFail { }
     }
 
-    "should throw if value type is not supported" {
-        shouldThrow<IllegalStateException> {
-            response[0]["message"]<List<*>>()
-        }
+    "should authorize fail" {
+        shouldFail { }
     }
 
-    "should print" {
-        "[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]" shouldBe response.toString()
+    "should login" {
+        shouldFail { }
+    }
+
+    "should login fail" {
+        shouldFail { }
+    }
+
+    "should login with confirm authorizing" {
+        shouldFail { }
     }
 })

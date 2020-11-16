@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
 import java.io.FileOutputStream
@@ -141,10 +140,7 @@ sealed class Link(val url: URI) {
                         is ApiCall.ProgressStatus.Done -> {
                             val downloadUrl: String = it.resource["url"]()
                             apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
-                                val ext = response.headers["Content-Type"]
-                                    ?.first()
-                                    ?.toMediaType()
-                                    ?.subtype ?: "jpg"
+                                val ext = response.contentType?.subtype ?: "jpg"
                                 val file = File(dir, "$fileName.$ext")
                                 response.stream.use { input ->
                                     val buffer = ByteArray(bufferSize)

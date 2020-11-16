@@ -80,19 +80,17 @@ internal object HttpClient {
      *
      */
     suspend fun Call.executeCo(): Response = suspendCancellableCoroutine { cont ->
-        this.enqueue(object : Callback {
+        this@executeCo.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (cont.isCancelled) return
                 cont.resumeWithException(e)
             }
 
             override fun onResponse(call: Call, response: Response) {
-                if (cont.isCancelled) return
                 cont.resume(response)
             }
         })
         cont.invokeOnCancellation {
-            this.cancel()
+            this@executeCo.cancel()
         }
     }
 
@@ -103,7 +101,7 @@ internal object HttpClient {
      * @property progressListener Callback
      * @constructor Create empty Progress response body
      */
-    private class ProgressResponseBody internal constructor(
+    private class ProgressResponseBody(
         private val responseBody: ResponseBody,
         private val progressListener: ProgressListener
     ) : ResponseBody() {

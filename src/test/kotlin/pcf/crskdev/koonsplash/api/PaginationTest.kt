@@ -27,7 +27,8 @@ import io.mockk.mockk
 
 internal class PaginationTest : StringSpec({
     "should parse link header when on first page" {
-        val link = "<https://api.unsplash.com/photos?page=20182>; rel=\"last\", <https://api.unsplash.com/photos?page=2>; rel=\"next\""
+        val link =
+            "<https://api.unsplash.com/photos?page=20182>; rel=\"last\", <https://api.unsplash.com/photos?page=2>; rel=\"next\""
         val pagination = Pagination.createPagination({ mockk() }, link)
         pagination.currentNumber shouldBe 1
         pagination.total shouldBe 20182
@@ -59,5 +60,12 @@ internal class PaginationTest : StringSpec({
         pagination.prevPage?.toString() shouldBe "https://api.unsplash.com/photos?page=20148"
         pagination.nextPage shouldBe null
         pagination.lastPage shouldBe null
+    }
+
+    "should default totalPages and current to 1" {
+        val link = ""
+        val pagination = Pagination.createPagination({ mockk() }, link)
+        pagination.currentNumber shouldBe 1
+        pagination.total shouldBe 1
     }
 })

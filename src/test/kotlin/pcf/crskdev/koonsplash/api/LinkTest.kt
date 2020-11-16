@@ -22,7 +22,6 @@
 package pcf.crskdev.koonsplash.api
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -30,45 +29,24 @@ import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.toList
-import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.RecordedRequest
 import pcf.crskdev.koonsplash.http.HttpClient
-import pcf.crskdev.koonsplash.util.dispatcher
+import pcf.crskdev.koonsplash.util.StringSpecIT
+import pcf.crskdev.koonsplash.util.checksum
 import pcf.crskdev.koonsplash.util.fileFromPath
+import pcf.crskdev.koonsplash.util.resource
 import pcf.crskdev.koonsplash.util.setBodyFromFile
+import pcf.crskdev.koonsplash.util.setBodyFromResource
+import pcf.crskdev.koonsplash.util.toFile
 import java.io.File
 import java.util.UUID
 
 @ExperimentalCoroutinesApi
 @FlowPreview
-internal class LinkTest : StringSpec({
-
-    val server = MockWebServer().apply { start() }
+internal class LinkTest : StringSpecIT({
 
     val apiCallProvider: (String) -> ApiCall = { url -> ApiCallImpl(Endpoint(url), HttpClient.http, "", null) }
-
-    val emptyDispatcher = object : Dispatcher() {
-        override fun dispatch(request: RecordedRequest): MockResponse = MockResponse()
-    }
-
-    HttpClient.apiBaseUrl = HttpUrl.Builder()
-        .scheme("http")
-        .host(server.hostName)
-        .port(server.port)
-        .build()
-        .toUri()
-
-    afterTest {
-        server.dispatcher = emptyDispatcher
-    }
-
-    afterSpec {
-        server.shutdown()
-    }
 
     "should create the correct links" {
         val apiLink = Link.create({ mockk() }, HttpClient.apiBaseUrl.resolve("/foo/bar/").toString())
@@ -83,8 +61,11 @@ internal class LinkTest : StringSpec({
     }
 
     "should download a photo" {
+        println("Test " + Thread.currentThread())
         val locationHash = UUID.randomUUID().toString().replace("-", "")
-        server.dispatcher = dispatcher {
+        val remoteFile = resource("photo_test.png").toFile()
+        dispatchable = {
+            println("Dispatcher " + Thread.currentThread())
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -95,7 +76,7 @@ internal class LinkTest : StringSpec({
                     MockResponse()
                         .setResponseCode(200)
                         .setHeader("Content-Type", "image/png".toMediaType())
-                        .setBody("photo_test.png")
+                        .setBodyFromFile(remoteFile)
                 else -> throw IllegalStateException("Unknown request path $path")
             }
         }
@@ -104,6 +85,8 @@ internal class LinkTest : StringSpec({
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
             apiCallProvider
         )
+
+        println("Test download " + Thread.currentThread())
         val statuses = link
             .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
@@ -111,6 +94,7 @@ internal class LinkTest : StringSpec({
         requireNotNull(fileUri)
 
         fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
 
         // cleanup
         assert(File(fileUri.path).delete())
@@ -118,7 +102,8 @@ internal class LinkTest : StringSpec({
 
     "should download a photo using extension" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
-        server.dispatcher = dispatcher {
+        val remoteFile = resource("photo_test.png").toFile()
+        dispatchable = {
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -129,7 +114,7 @@ internal class LinkTest : StringSpec({
                     MockResponse()
                         .setResponseCode(200)
                         .setHeader("Content-Type", "image/png".toMediaType())
-                        .setBodyFromFile("photo_test.png")
+                        .setBodyFromResource("photo_test.png")
                 else -> throw IllegalStateException("Unknown request path $path")
             }
         }
@@ -146,6 +131,7 @@ internal class LinkTest : StringSpec({
             .url
 
         fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
 
         // cleanup
         assert(File(fileUri.path).delete())
@@ -153,7 +139,8 @@ internal class LinkTest : StringSpec({
 
     "should default to jpg when downloading photo extension is not found" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
-        server.dispatcher = dispatcher {
+        val remoteFile = resource("photo_test.png").toFile()
+        dispatchable = {
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -163,7 +150,7 @@ internal class LinkTest : StringSpec({
                 "/$locationHash" ->
                     MockResponse()
                         .setResponseCode(200)
-                        .setBodyFromFile("photo_test.png")
+                        .setBodyFromResource("photo_test.png")
                 else -> throw IllegalStateException("Unknown request path $path")
             }
         }
@@ -180,13 +167,14 @@ internal class LinkTest : StringSpec({
         requireNotNull(fileUri)
 
         fileUri.toString().endsWith("photo_test_downloaded.jpg") shouldBe true
+        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
 
         // cleanup
         assert(File(fileUri.path).delete())
     }
 
     "should have cancel status if something went wrong on fetching real url location" {
-        server.dispatcher = dispatcher {
+        dispatchable = {
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -208,7 +196,7 @@ internal class LinkTest : StringSpec({
 
     "should have cancel status if something went wrong during download" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
-        server.dispatcher = dispatcher {
+        dispatchable = {
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -234,7 +222,7 @@ internal class LinkTest : StringSpec({
     }
 
     "should throw when downloading using extension" {
-        server.dispatcher = dispatcher {
+        dispatchable = {
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()
@@ -257,7 +245,7 @@ internal class LinkTest : StringSpec({
     }
 
     "should call the ApiLink" {
-        server.dispatcher = dispatcher {
+        dispatchable = {
             when (path ?: "/") {
                 "/random" ->
                     MockResponse()
@@ -281,7 +269,8 @@ internal class LinkTest : StringSpec({
     }
 })
 
-private inline fun <reified T : ApiCall.ProgressStatus<Link.Photo>> List<ApiCall.ProgressStatus<Link.Photo>>.find(): T? = find { it is T } as T?
+private inline fun <reified T : ApiCall.ProgressStatus<Link.Photo>> List<ApiCall.ProgressStatus<Link.Photo>>.find(): T? =
+    find { it is T } as T?
 
 private typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Photo>
 private typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Photo>

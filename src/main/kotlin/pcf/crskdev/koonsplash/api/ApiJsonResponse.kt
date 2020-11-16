@@ -60,7 +60,7 @@ class ApiJsonResponse internal constructor(
      */
     private val apiJson = ApiJson(element, apiCall)
 
-    val meta = ApiMeta(apiCall, headers)
+    val meta = ApiMeta(headers, apiCall)
 
     /**
      * Gets an ApiJson element based on:

@@ -66,11 +66,11 @@ object SignedOutException : RuntimeException()
  *
  * @property form AuthorizeForm
  */
-class ConfirmAuthorizeException(val form: AuthorizeForm) : RuntimeException()
+class NeedsConfirmAuthorizeFormException(val form: AuthorizeForm) : RuntimeException()
 
 /**
  * Thrown when confirm authorize form was not successfully submitted.
  *
  * @property message Message
  */
-class ConfirmAuthorizeFailureException(message: String) : RuntimeException(message)
+class ConfirmAuthorizeException(message: String) : RuntimeException(message)

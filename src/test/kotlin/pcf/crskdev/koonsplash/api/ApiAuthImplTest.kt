@@ -21,41 +21,44 @@
 
 package pcf.crskdev.koonsplash.api
 
-import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
-import java.io.StringReader
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AuthToken
+import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.util.StringSpecIT
+import pcf.crskdev.koonsplash.util.setBodyFromResource
 
-internal class ApiJsonResponseTest : StringSpec({
+internal class ApiAuthImplTest : StringSpecIT({
 
-    val response = ApiJsonResponse(
-        { mockk() },
-        StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
-        emptyMap()
+    val api = ApiAuthImpl(
+        mockk(),
+        HttpClient.http,
+        "key_123",
+        AuthToken("token_123", "bearer", "", 1)
     )
-
-    "should traverse the json tree" {
-        response[0]["message"]<String>() shouldBe "Hi"
-        response[0]["place"]["name"]<String>() shouldBe "World"
-    }
-
-    "should throw if selector key is not a string or int" {
-        shouldThrow<IllegalStateException> {
-            val badSelector = object : Comparable<Any> {
-                override fun compareTo(other: Any): Int = 0
+    "should call me" {
+        dispatchable = {
+            when (path ?: "/") {
+                "/me" ->
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json".toMediaType())
+                        .setBodyFromResource("me.json")
+                else -> MockResponse().setResponseCode(404)
             }
-            response[badSelector]
         }
-    }
 
-    "should throw if value type is not supported" {
-        shouldThrow<IllegalStateException> {
-            response[0]["message"]<List<*>>()
+        val me = api.me()()
+
+        me["id"]<String>() shouldBe "fakeid"
+        me["username"]<String>() shouldBe "foo"
+
+        with(lastRequest()) {
+            method shouldBe "GET"
+            headers.toMultimap()["Authorization"]!![0] shouldBe "Client-ID key_123"
+            headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
         }
-    }
-
-    "should print" {
-        "[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]" shouldBe response.toString()
     }
 })

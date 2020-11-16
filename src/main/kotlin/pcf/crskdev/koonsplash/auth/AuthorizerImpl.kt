@@ -103,7 +103,7 @@ internal class AuthorizerImpl(
                                                     loginFormController.onLoginFailure(loginErr)
                                                     loginFormController.activateForm(loginErr)
                                                 }
-                                                is ConfirmAuthorizeException -> {
+                                                is NeedsConfirmAuthorizeFormException -> {
                                                     authCalls.authorizeForm(loginErr.form)
                                                         .onSuccess { code ->
                                                             authCalls.token(

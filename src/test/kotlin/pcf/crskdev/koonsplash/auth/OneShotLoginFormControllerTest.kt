@@ -19,30 +19,35 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.util
+package pcf.crskdev.koonsplash.auth
 
-import okhttp3.mockwebserver.Dispatcher
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.RecordedRequest
-import okio.Buffer
-import okio.source
-import java.io.File
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.mockk
+import io.mockk.verify
 
-fun MockResponse.setBodyFromFile(filePath: String): MockResponse = setBody(
-    Buffer().apply {
-        writeAll(
-            javaClass
-                .classLoader
-                .getResource(filePath)!!
-                .openStream()
-                .source()
-        )
+internal class OneShotLoginFormControllerTest : StringSpec({
+
+    "should activate once" {
+        val submitter = mockk<LoginFormSubmitter>(relaxed = true)
+        val listener = mockk<LoginFormListener>(relaxed = true)
+        val controller = OneShotLoginFormController("foo@mail.xyz", "bar").apply {
+            attachFormListener(listener)
+            attachFormSubmitter(submitter)
+        }
+
+        controller.activateForm(null)
+
+        verify { submitter.submit("foo@mail.xyz", "bar") }
+
+        val dueTo = Error("Error")
+        controller.activateForm(dueTo)
+
+        verify {
+            submitter.giveUp(dueTo)
+            listener.onGiveUp(dueTo)
+        }
+
+        controller.isDetached() shouldBe true
     }
-)
-
-fun fileFromPath(vararg segments: String): File = File(segments.joinToString(File.separator))
-
-fun dispatcher(requestBlock: RecordedRequest.() -> MockResponse): Dispatcher =
-    object : Dispatcher() {
-        override fun dispatch(request: RecordedRequest): MockResponse = request.run(requestBlock)
-    }
+})

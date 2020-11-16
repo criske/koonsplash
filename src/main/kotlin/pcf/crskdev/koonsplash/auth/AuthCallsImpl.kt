@@ -96,7 +96,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
                 ?: Result.failure(
-                    ConfirmAuthorizeFailureException(
+                    ConfirmAuthorizeException(
                         "Authorize form was submitted but authorization code was not received"
                     )
                 )
@@ -126,7 +126,7 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
                 ?.let { Result.success(it) }
                 ?: this.extractConfirmAuthorizationForm(document)
                     ?.let { form ->
-                        Result.failure(ConfirmAuthorizeException(form))
+                        Result.failure(NeedsConfirmAuthorizeFormException(form))
                     }
                 ?: Result.failure(InvalidCredentialsException)
         }

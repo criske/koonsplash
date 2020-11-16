@@ -19,43 +19,46 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api
+package pcf.crskdev.koonsplash.util
 
-import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
-import io.mockk.mockk
-import java.io.StringReader
+import okhttp3.mockwebserver.MockResponse
+import okio.Buffer
+import okio.source
+import java.io.File
+import java.io.FileNotFoundException
+import java.net.URL
+import java.nio.file.Paths
+import java.util.zip.CRC32
 
-internal class ApiJsonResponseTest : StringSpec({
-
-    val response = ApiJsonResponse(
-        { mockk() },
-        StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
-        emptyMap()
-    )
-
-    "should traverse the json tree" {
-        response[0]["message"]<String>() shouldBe "Hi"
-        response[0]["place"]["name"]<String>() shouldBe "World"
+fun MockResponse.setBodyFromResource(filePath: String): MockResponse = setBody(
+    Buffer().apply {
+        writeAll(
+            resource(filePath)
+                .openStream()
+                .source()
+        )
     }
+)
 
-    "should throw if selector key is not a string or int" {
-        shouldThrow<IllegalStateException> {
-            val badSelector = object : Comparable<Any> {
-                override fun compareTo(other: Any): Int = 0
-            }
-            response[badSelector]
-        }
+fun MockResponse.setBodyFromFile(file: File): MockResponse = setBody(
+    Buffer().apply {
+        writeAll(
+            file.toURI()
+                .toURL()
+                .openStream()
+                .source()
+        )
     }
+)
 
-    "should throw if value type is not supported" {
-        shouldThrow<IllegalStateException> {
-            response[0]["message"]<List<*>>()
-        }
-    }
+fun fileFromPath(vararg segments: String): File = File(segments.joinToString(File.separator))
 
-    "should print" {
-        "[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]" shouldBe response.toString()
-    }
-})
+fun URL.toFile(): File = Paths.get(toURI()).toFile()
+
+fun Any.resource(filePath: String): URL =
+    javaClass.classLoader.getResource(filePath) ?: throw FileNotFoundException("Resource not found $filePath")
+
+fun File.checksum(): Long = CRC32().apply {
+    val bytes = this@checksum.readBytes()
+    update(bytes, 0, bytes.size)
+}.value
