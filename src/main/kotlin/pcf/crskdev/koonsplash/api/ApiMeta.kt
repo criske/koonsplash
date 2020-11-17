@@ -32,8 +32,8 @@ import java.net.URI
  * @since 0.1
  */
 class ApiMeta internal constructor(
-    private val apiCall: (String) -> ApiCall,
-    private val headers: Headers
+    private val headers: Headers,
+    private val apiCall: (String) -> ApiCall
 ) {
 
     /**
@@ -60,7 +60,7 @@ class ApiMeta internal constructor(
  * @property lastPage Last page Link
  * @constructor Create empty Pagination
  */
-class Pagination(
+class Pagination internal constructor(
     val total: Int,
     val currentNumber: Int,
     val firstPage: Link.Api?,

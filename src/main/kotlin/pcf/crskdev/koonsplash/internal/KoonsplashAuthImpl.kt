@@ -70,7 +70,7 @@ internal class KoonsplashAuthImpl(
      *
      */
     private object ApiAuthSignedOut : ApiAuth {
-        override suspend fun me() {
+        override suspend fun me(verb: Verb): ApiCall {
             throw SignedOutException
         }
 

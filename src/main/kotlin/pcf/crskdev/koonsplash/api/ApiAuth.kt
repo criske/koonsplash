@@ -34,7 +34,7 @@ import pcf.crskdev.koonsplash.http.HttpClient
  */
 interface ApiAuth : Api {
 
-    suspend fun me()
+    suspend fun me(verb: Verb = Verb.Get): ApiCall
 }
 
 /**
@@ -53,9 +53,7 @@ class ApiAuthImpl(
     private val authToken: AuthToken
 ) : ApiAuth, Api by api {
 
-    override suspend fun me() {
-        TODO("Not yet implemented")
-    }
+    override suspend fun me(verb: Verb) = call("/me", verb)
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
         ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, accessKey, authToken)

@@ -128,7 +128,10 @@ class KoonsplashBuilder internal constructor(
     }
 
     fun build(): Koonsplash {
-        val authorizer = AuthorizerImpl(this.keysLoader.accessKey, this.keysLoader.secretKey)
+        val authorizer = AuthorizerImpl(
+            this.keysLoader.accessKey,
+            this.keysLoader.secretKey
+        )
         return KoonsplashSingleton(KoonsplashImpl(this.keysLoader.accessKey, this.storage, HttpClient.http, authorizer))
     }
 }

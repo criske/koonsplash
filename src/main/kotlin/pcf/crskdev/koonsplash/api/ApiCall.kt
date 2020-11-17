@@ -22,8 +22,8 @@
 package pcf.crskdev.koonsplash.api
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -35,6 +35,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
+import okhttp3.internal.closeQuietly
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
@@ -46,6 +47,8 @@ import kotlin.math.roundToInt
 
 /**
  * API call.
+ *
+ * @see Api.call
  *
  */
 interface ApiCall {
@@ -149,17 +152,16 @@ interface ApiCall {
         /**
          * Content type
          */
-        val contentType: String
+        val contentType: ContentType?
 
         /**
-         * Content sub type
+         * Content type representation.
+         *
+         * @property type Type
+         * @property subtype Sub type
+         * @constructor Create empty Content type
          */
-        val contentSubType: String
-
-        /**
-         * Code.
-         */
-        val code: Int
+        data class ContentType(val type: String, val subtype: String)
     }
 }
 
@@ -181,20 +183,18 @@ internal class ApiCallImpl(
 
     @ExperimentalCoroutinesApi
     override suspend fun invoke(vararg param: Param): ApiJsonResponse = coroutineScope {
-        val responseChannel = Channel<ApiJsonResponse>()
-        execute(param.toList()).collect {
-            when (it) {
-                is ApiCall.ProgressStatus.Done<*> ->
-                    launch {
-                        responseChannel.send(it.resource as ApiJsonResponse)
+        produce(coroutineContext) {
+            execute(param.toList()).collect {
+                when (it) {
+                    is ApiCall.ProgressStatus.Done<*> ->
+                        send(it.resource as ApiJsonResponse)
+                    is ApiCall.ProgressStatus.Canceled ->
+                        throw it.err
+                    else -> {
                     }
-                is ApiCall.ProgressStatus.Canceled ->
-                    throw it.err
-                else -> {
                 }
             }
-        }
-        responseChannel.receive()
+        }.receive()
     }
 
     @ExperimentalCoroutinesApi
@@ -226,11 +226,13 @@ internal class ApiCallImpl(
                 }
             }
             .build()
+
+        var response: Response? = null
         try {
             if (progressType != ApiCall.Progress.Ignore) {
                 offer(ApiCall.ProgressStatus.Starting<T>())
             }
-            val response = httpClient
+            response = httpClient
                 .run {
                     if (progressType == ApiCall.Progress.Ignore) {
                         this
@@ -263,21 +265,32 @@ internal class ApiCallImpl(
                 }
                 .newCall(request)
                 .executeCo()
+
             if (response.isSuccessful) {
-                offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttp(response))))
+                launch {
+                    try {
+                        offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttpWrapper(response))))
+                    } catch (ex: Exception) {
+                        offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+                    } finally {
+                        close()
+                    }
+                }
             } else {
                 offer(
                     ApiCall.ProgressStatus.Canceled<T>(
                         IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
                     )
                 )
+                close()
             }
         } catch (ex: Exception) {
             offer(ApiCall.ProgressStatus.Canceled<T>(ex))
-        } finally {
             close()
         }
-        awaitClose {}
+        awaitClose {
+            response?.body?.closeQuietly()
+        }
     }
 
     @ExperimentalCoroutinesApi
@@ -312,15 +325,17 @@ internal class ApiCallImpl(
                 }
             }
 
-    private class ResponseOkHttp(response: Response) : ApiCall.Response {
+    private class ResponseOkHttpWrapper(response: Response) : ApiCall.Response {
+
         override val stream: InputStream = response.body?.byteStream()
             ?: object : InputStream() {
                 override fun read(): Int = -1
             }
         override val reader: Reader = response.body?.charStream() ?: StringReader("{}")
         override val headers: Headers = response.headers.toMultimap()
-        override val contentType: String = response.body?.contentType()?.toString() ?: ""
-        override val contentSubType: String = response.body?.contentType()?.subtype ?: ""
-        override val code: Int = response.code
+        override val contentType: ApiCall.Response.ContentType? =
+            response.body?.contentType()?.let {
+                ApiCall.Response.ContentType(it.type, it.subtype)
+            }
     }
 }

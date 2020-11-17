@@ -41,7 +41,7 @@ internal class AuthorizerImplTest : StringSpec({
 
     "should get token without login" {
         val server = mockk<AuthCodeServer>(relaxed = true)
-        val controller = TestLoginFormController(null, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(null, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.success("code123"),
             Result.success("code123"),
@@ -69,13 +69,14 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe false
         authCalls.calledToken shouldBe true
+        authCalls.calledAuthorizeConfirmForm shouldBe false
         controller.isDetached() shouldBe true
     }
 
     "should get token with log in" {
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
-        val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.failure(NeedsLoginException("csrf")),
             Result.success("code123"),
@@ -104,13 +105,87 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe true
         authCalls.calledToken shouldBe true
+        authCalls.calledAuthorizeConfirmForm shouldBe false
+        controller.isDetached() shouldBe true
+    }
+
+    "should get token after authorize confirmation form" {
+        val server = mockk<AuthCodeServer>(relaxed = true)
+        val loginForm = mockk<LoginFormListener>(relaxed = true)
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
+        val authCalls = MockAuthCalls(
+            Result.failure(NeedsLoginException("csrf")),
+            Result.failure(NeedsConfirmAuthorizeFormException(emptyList())),
+            Result.success(authToken),
+            Result.success("code213")
+        )
+        val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
+        val authorizer = AuthorizerImpl(
+            "access123",
+            "secret123",
+            server,
+            authCalls
+        )
+
+        every { server.callbackUri } returns URI.create("/")
+        every { server.startServing() } returns true
+
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
+
+        verify {
+            onSuccess(authToken)
+            loginForm.onSuccess()
+            server.stopServing()
+        }
+
+        authCalls.calledAuthorize shouldBe true
+        authCalls.calledLoginForm shouldBe true
+        authCalls.calledToken shouldBe true
+        authCalls.calledAuthorizeConfirmForm shouldBe true
+        controller.isDetached() shouldBe true
+    }
+
+    "should fail on authorize confirmation form" {
+        val server = mockk<AuthCodeServer>(relaxed = true)
+        val loginForm = mockk<LoginFormListener>(relaxed = true)
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
+        val authCalls = MockAuthCalls(
+            Result.failure(NeedsLoginException("csrf")),
+            Result.failure(NeedsConfirmAuthorizeFormException(emptyList())),
+            Result.success(authToken),
+            Result.failure(ConfirmAuthorizeException(""))
+        )
+        val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
+        val authorizer = AuthorizerImpl(
+            "access123",
+            "secret123",
+            server,
+            authCalls
+        )
+
+        every { server.callbackUri } returns URI.create("/")
+        every { server.startServing() } returns true
+
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
+
+        verify(exactly = 1) {
+            onFailure(any())
+            server.stopServing()
+        }
+
+        authCalls.calledAuthorize shouldBe true
+        authCalls.calledLoginForm shouldBe true
+        authCalls.calledToken shouldBe false
+        authCalls.calledAuthorizeConfirmForm shouldBe true
         controller.isDetached() shouldBe true
     }
 
     "should fail login due to invalid credentials" {
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
-        val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.failure(NeedsLoginException("csrf")),
             Result.failure(InvalidCredentialsException),
@@ -145,13 +220,14 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe true
         authCalls.calledToken shouldBe false
+        authCalls.calledAuthorizeConfirmForm shouldBe false
         controller.isDetached() shouldBe true
     }
 
     "should call onFailure if something occurs on authorize" {
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
-        val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.failure(IOException()),
             Result.success("code123"),
@@ -184,13 +260,14 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe false
         authCalls.calledToken shouldBe false
+        authCalls.calledAuthorizeConfirmForm shouldBe false
         controller.isDetached() shouldBe true
     }
 
     "should call onFailure if something occurs on login" {
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
-        val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.failure(NeedsLoginException("csrf")),
             Result.failure(IOException()),
@@ -224,13 +301,56 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe true
         authCalls.calledToken shouldBe false
+        authCalls.calledAuthorizeConfirmForm shouldBe false
+        controller.isDetached() shouldBe true
+    }
+
+    "should call onFailure if something occurs on token after confirm authorize form" {
+        val server = mockk<AuthCodeServer>(relaxed = true)
+        val loginForm = mockk<LoginFormListener>(relaxed = true)
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
+        val authCalls = MockAuthCalls(
+            Result.failure(NeedsLoginException("csrf")),
+            Result.failure(NeedsConfirmAuthorizeFormException(emptyList())),
+            Result.failure(IOException()),
+            Result.success("code123"),
+        )
+        val onSuccess = mockk<(AuthToken) -> Unit>(relaxed = true)
+        val onFailure = mockk<(Throwable) -> Unit>(relaxed = true)
+        val authorizer = AuthorizerImpl(
+            "access123",
+            "secret123",
+            server,
+            authCalls,
+        )
+
+        every { server.callbackUri } returns URI.create("/")
+        every { server.startServing() } returns true
+
+        authorizer.authorize(TestExecutor, controller, AuthScope.PUBLIC, onFailure, onSuccess)
+
+        verify(exactly = 0) {
+            onSuccess(any())
+            loginForm.onSuccess()
+            loginForm.onFailure(any())
+        }
+
+        verify {
+            onFailure(any())
+            server.stopServing()
+        }
+
+        authCalls.calledAuthorize shouldBe true
+        authCalls.calledLoginForm shouldBe true
+        authCalls.calledToken shouldBe true
+        authCalls.calledAuthorizeConfirmForm shouldBe true
         controller.isDetached() shouldBe true
     }
 
     "should call onFailure if something occurs on token" {
         val server = mockk<AuthCodeServer>(relaxed = true)
         val loginForm = mockk<LoginFormListener>(relaxed = true)
-        val controller = TestLoginFormController(loginForm, "foo@mail.com", "123")
+        val controller = TestLoginFormControllerOneShot(loginForm, "foo@mail.com", "123")
         val authCalls = MockAuthCalls(
             Result.failure(NeedsLoginException("csrf")),
             Result.success("code123"),
@@ -264,6 +384,7 @@ internal class AuthorizerImplTest : StringSpec({
         authCalls.calledAuthorize shouldBe true
         authCalls.calledLoginForm shouldBe true
         authCalls.calledToken shouldBe true
+        authCalls.calledAuthorizeConfirmForm shouldBe false
         controller.isDetached() shouldBe true
     }
 })
@@ -271,7 +392,8 @@ internal class AuthorizerImplTest : StringSpec({
 class MockAuthCalls(
     private val authorize: Result<AuthorizationCode>,
     private val login: Result<AuthorizationCode>,
-    private val token: Result<AuthToken>
+    private val token: Result<AuthToken>,
+    private val confirmAuthorize: Result<AuthorizationCode>? = null
 ) : AuthCalls {
 
     var calledAuthorize = false
@@ -279,6 +401,8 @@ class MockAuthCalls(
     var calledLoginForm = false
 
     var calledToken = false
+
+    var calledAuthorizeConfirmForm = false
 
     override fun authorize(
         accessKey: AccessKey,
@@ -290,7 +414,8 @@ class MockAuthCalls(
     }
 
     override fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode> {
-        TODO("Not yet implemented")
+        calledAuthorizeConfirmForm = true
+        return confirmAuthorize!!
     }
 
     override fun loginForm(
@@ -319,7 +444,7 @@ object TestExecutor : Executor {
     }
 }
 
-private class TestLoginFormController(
+private class TestLoginFormControllerOneShot(
     loginFormListener: LoginFormListener?,
     private val email: String,
     private val password: String
@@ -338,5 +463,20 @@ private class TestLoginFormController(
         } else {
             this.giveUp(dueTo)
         }
+    }
+}
+
+private class TestLoginFormControllerWithSubmitter(
+    private val submitter: LoginFormSubmitter,
+    private val loginFormListener: LoginFormListener?,
+) : LoginFormController() {
+
+    init {
+        loginFormListener?.let { attachFormListener(it) }
+    }
+
+    override fun activateForm(dueTo: Throwable?) {
+        this.attachFormSubmitter(submitter)
+        dueTo?.let { this.onLoginFailure(it) }
     }
 }

@@ -21,41 +21,28 @@
 
 package pcf.crskdev.koonsplash.api
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.mockk
-import java.io.StringReader
 
-internal class ApiJsonResponseTest : StringSpec({
+internal class ApiMetaTest : StringSpec({
 
-    val response = ApiJsonResponse(
-        { mockk() },
-        StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
-        emptyMap()
-    )
-
-    "should traverse the json tree" {
-        response[0]["message"]<String>() shouldBe "Hi"
-        response[0]["place"]["name"]<String>() shouldBe "World"
+    "should create rate limit" {
+        val meta = ApiMeta(emptyMap(), mockk())
+        meta.rateLimit.shouldBeInstanceOf<RateLimit>()
     }
 
-    "should throw if selector key is not a string or int" {
-        shouldThrow<IllegalStateException> {
-            val badSelector = object : Comparable<Any> {
-                override fun compareTo(other: Any): Int = 0
-            }
-            response[badSelector]
-        }
+    "should not create pagination" {
+        val meta = ApiMeta(emptyMap(), mockk())
+        (meta.pagination == null) shouldBe true
     }
 
-    "should throw if value type is not supported" {
-        shouldThrow<IllegalStateException> {
-            response[0]["message"]<List<*>>()
-        }
-    }
-
-    "should print" {
-        "[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]" shouldBe response.toString()
+    "should create pagination" {
+        val meta = ApiMeta(
+            mapOf("Link" to listOf("<https://api.unsplash.com/photos?page=1>; rel=\"first\", <https://api.unsplash.com/photos?page=20148>; rel=\"prev\"")),
+            mockk()
+        )
+        meta.pagination.shouldBeInstanceOf<Pagination>()
     }
 })
