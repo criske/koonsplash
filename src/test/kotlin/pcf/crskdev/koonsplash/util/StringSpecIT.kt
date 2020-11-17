@@ -82,16 +82,14 @@ abstract class StringSpecIT(body: StringSpecIT.() -> Unit = {}) : DslDrivenSpec(
     }
 
     init {
-        body()
-    }
-
-    init {
         HttpClient.apiBaseUrl = HttpUrl.Builder()
             .scheme("http")
             .host(server.hostName)
             .port(server.port)
             .build()
             .toUri()
+        HttpClient.baseUrl = HttpClient.apiBaseUrl
+        body()
     }
 
     final override fun afterSpec(spec: Spec) {

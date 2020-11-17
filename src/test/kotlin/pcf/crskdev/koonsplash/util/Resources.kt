@@ -21,6 +21,7 @@
 
 package pcf.crskdev.koonsplash.util
 
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
 import okio.Buffer
 import okio.source
@@ -30,26 +31,28 @@ import java.net.URL
 import java.nio.file.Paths
 import java.util.zip.CRC32
 
-fun MockResponse.setBodyFromResource(filePath: String): MockResponse = setBody(
-    Buffer().apply {
-        writeAll(
-            resource(filePath)
-                .openStream()
-                .source()
-        )
-    }
-)
+fun MockResponse.setBodyFromURL(url: URL): MockResponse = try {
+    setBody(
+        Buffer().apply {
+            writeAll(url.openStream().source())
+        }
+    )
+} catch (ex: Exception) {
+    when (ex) {
+        is FileNotFoundException -> setResponseCode(404)
+        else -> setResponseCode(500)
+    }.setBody(ex.message ?: "")
+}
 
-fun MockResponse.setBodyFromFile(file: File): MockResponse = setBody(
-    Buffer().apply {
-        writeAll(
-            file.toURI()
-                .toURL()
-                .openStream()
-                .source()
-        )
-    }
-)
+fun MockResponse.setBodyFromResource(filePath: String): MockResponse = setBodyFromURL(resource(filePath))
+
+fun MockResponse.setBodyFromFile(file: File): MockResponse = setBodyFromURL(file.toURI().toURL())
+
+fun MockResponse.withImageHeader(imageType: String) = setHeader("Content-Type", "image/$imageType".toMediaType())
+
+fun MockResponse.withJSONHeader() = setHeader("Content-Type", "application/json".toMediaType())
+
+fun MockResponse.withHTMLHeader() = setHeader("Content-Type", "text/html".toMediaType())
 
 fun fileFromPath(vararg segments: String): File = File(segments.joinToString(File.separator))
 

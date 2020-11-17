@@ -53,6 +53,8 @@ internal object HttpClient {
 
     var imagesBaseUrl = URI.create("https://images.unsplash.com/")
 
+    var baseUrl = URI.create("https://unsplash.com/")
+
     val http = OkHttpClient.Builder()
         .cookieJar(
             JavaNetCookieJar(

@@ -42,6 +42,11 @@ import pcf.crskdev.koonsplash.util.toFile
 import java.io.File
 import java.util.UUID
 
+/**
+ * Link test for [Link] implementations.
+ *
+ * @constructor Create empty Link test
+ */
 @ExperimentalCoroutinesApi
 @FlowPreview
 internal class LinkTest : StringSpecIT({
@@ -65,7 +70,6 @@ internal class LinkTest : StringSpecIT({
         val locationHash = UUID.randomUUID().toString().replace("-", "")
         val remoteFile = resource("photo_test.png").toFile()
         dispatchable = {
-            println("Dispatcher " + Thread.currentThread())
             when (path ?: "/") {
                 "/photos/Dwu85P9SOIk/download" ->
                     MockResponse()

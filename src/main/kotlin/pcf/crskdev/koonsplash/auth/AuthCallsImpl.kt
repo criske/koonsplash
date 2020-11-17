@@ -23,13 +23,14 @@ package pcf.crskdev.koonsplash.auth
 
 import okhttp3.CacheControl
 import okhttp3.FormBody
-import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
 import java.io.IOException
 import java.net.URI
@@ -41,11 +42,12 @@ import java.net.URI
  * @since 0.1
  * @param httpClient Http client
  */
-internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
+internal class AuthCallsImpl(
+    private val httpClient: OkHttpClient,
+) : AuthCalls {
 
-    private val baseAuthHttpUrl = HttpUrl.Builder()
-        .host("unsplash.com")
-        .scheme("https")
+    private val baseAuthHttpUrl = HttpClient.baseUrl.toHttpUrlOrNull()!!
+        .newBuilder()
         .addPathSegment("oauth")
         .build()
 
@@ -73,7 +75,9 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
             val authenticityToken = this.extractAuthenticityToken(document)
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
-                ?: Result.failure(NeedsLoginException(authenticityToken))
+                ?: authenticityToken?.let {
+                    Result.failure(NeedsLoginException(it))
+                } ?: Result.failure(IllegalStateException("AuthenticityToken not found"))
         }
     }
 
@@ -174,8 +178,8 @@ internal class AuthCallsImpl(private val httpClient: OkHttpClient) : AuthCalls {
      * @param doc Document.
      * @return AuthenticityToken
      */
-    private fun extractAuthenticityToken(doc: Document): AuthenticityToken {
-        return doc.extractInputValue("authenticity_token")!!
+    private fun extractAuthenticityToken(doc: Document): AuthenticityToken? {
+        return doc.extractInputValue("authenticity_token")
     }
 
     /**
