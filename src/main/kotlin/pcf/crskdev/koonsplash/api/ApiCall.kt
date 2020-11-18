@@ -265,24 +265,14 @@ internal class ApiCallImpl(
                 }
                 .newCall(request)
                 .executeCo()
-
-            if (response.isSuccessful) {
-                launch {
-                    try {
-                        offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttpWrapper(response))))
-                    } catch (ex: Exception) {
-                        offer(ApiCall.ProgressStatus.Canceled<T>(ex))
-                    } finally {
-                        close()
-                    }
+            launch {
+                try {
+                    offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttpWrapper(response))))
+                } catch (ex: Exception) {
+                    offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+                } finally {
+                    close()
                 }
-            } else {
-                offer(
-                    ApiCall.ProgressStatus.Canceled<T>(
-                        IllegalStateException("Bad request [$url] ${response.code}: ${response.message}")
-                    )
-                )
-                close()
             }
         } catch (ex: Exception) {
             offer(ApiCall.ProgressStatus.Canceled<T>(ex))
