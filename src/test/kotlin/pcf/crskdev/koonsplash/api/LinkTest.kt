@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.toList
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.http.HttpException
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.checksum
 import pcf.crskdev.koonsplash.util.fileFromPath
@@ -235,7 +236,7 @@ internal class LinkTest : StringSpecIT({
             }
         }
 
-        shouldThrow<IllegalStateException> {
+        shouldThrow<HttpException> {
             Link
                 .Download(
                     HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),

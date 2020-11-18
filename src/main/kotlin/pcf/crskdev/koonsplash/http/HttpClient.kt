@@ -88,7 +88,11 @@ internal object HttpClient {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                cont.resume(response)
+                if (response.isSuccessful) {
+                    cont.resume(response)
+                } else {
+                    cont.resumeWithException(HttpException(response.code, response.message))
+                }
             }
         })
         cont.invokeOnCancellation {
@@ -150,3 +154,5 @@ internal object HttpClient {
 }
 
 typealias ProgressListener = (Long, Long, Long, Boolean) -> Unit
+
+class HttpException(val code: Int, override val message: String) : RuntimeException(message)
