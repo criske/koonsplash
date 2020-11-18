@@ -69,7 +69,7 @@ fun main() {
             val id: String = firstLikedPhoto["id"]()
             downloadLink
                 .download(File("C:\\Users\\user\\Desktop"), id)
-                .collect { status->
+                .collect { status ->
                     when (status) {
                         is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
                         is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}%")
