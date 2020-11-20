@@ -55,7 +55,7 @@ jobs:
       - codecov/upload:
           file: /build/jacoco/test/jacocoTestReport.xml
 
-#      #code coverage
+#      # code coverage
 #      - run:
 #          name: Code coverage
 #          command: mkdir -p ~/code-coverage/ && gradle jacocoTestCoverageVerification
