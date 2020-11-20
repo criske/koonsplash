@@ -1,3 +1,5 @@
+![codecov.io](https://codecov.io/github/criske/koonsplash/coverage.svg?branch=master)
+    
 # **Koonsplash**
 
 Unofficial client side Kotlin wrapper for Unsplash API. 
