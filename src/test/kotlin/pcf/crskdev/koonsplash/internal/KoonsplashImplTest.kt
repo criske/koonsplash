@@ -60,7 +60,7 @@ internal class KoonsplashImplTest : StringSpec({
             authorizer
         )
 
-        every { storage.load() } returns AuthToken("token", "", "", 1)
+        every { storage.load() } returns AuthToken("token", "", "", AuthScope.ALL, 1)
 
         val authenticated = koonsplash.authenticated("", "")
 
@@ -70,7 +70,7 @@ internal class KoonsplashImplTest : StringSpec({
 
     "should call authorize" {
         val storage = mockk<AuthTokenStorage>(relaxed = true)
-        val authToken = AuthToken("token", "", "", 1)
+        val authToken = AuthToken("token", "", "", AuthScope.ALL, 1)
         val authorizer = object : Authorizer {
             override fun authorize(
                 executor: Executor,

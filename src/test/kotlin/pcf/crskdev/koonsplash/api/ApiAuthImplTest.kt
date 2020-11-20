@@ -25,6 +25,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.util.StringSpecIT
@@ -36,7 +37,7 @@ internal class ApiAuthImplTest : StringSpecIT({
         mockk(),
         HttpClient.http,
         "key_123",
-        AuthToken("token_123", "bearer", "", 1)
+        AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
     )
     "should call me" {
         dispatchable = {
