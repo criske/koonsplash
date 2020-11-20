@@ -52,23 +52,46 @@ sealed class AuthScope {
         val WRITE_COLLECTIONS: AuthScope = AuthScopeValue("write_collections")
         val ALL: AuthScope =
             (PUBLIC + READ_USER + WRITE_USER + READ_PHOTOS + WRITE_PHOTOS + WRITE_LIKES + WRITE_FOLLOWERS + READ_COLLECTIONS + WRITE_COLLECTIONS)
+
+        /**
+         * Decodes a raw string of scope or scopes delimited by space or plus.
+         *
+         * @param scope
+         * @return AuthScope
+         */
+        fun decode(scope: String): AuthScope = scope.split("\\+|\\s+".toRegex())
+            .map { AuthScopeValue(it) }
+            .fold(AuthScopeNone) { acc: AuthScope, curr ->
+                if (acc == AuthScopeNone) curr else acc + curr
+            }
     }
 }
 
-private class AuthScopeValue(override val value: String) : AuthScope()
+private data class AuthScopeValue(override val value: String) : AuthScope()
 
-private class AuthScopePlus(left: AuthScope, right: AuthScope) : AuthScope() {
-
-    override val value: String = (left.values.toSet() + right.values).joinToString("+")
+internal object AuthScopeNone : AuthScope() {
+    override val value: String
+        get() = ""
 }
 
-private class AuthScopeMinus(left: AuthScope, right: AuthScope) : AuthScope() {
+private data class AuthScopePlus(val left: AuthScope, val right: AuthScope) : AuthScope() {
+
+    override val value: String = when {
+        left is AuthScopeNone -> right.values
+        right is AuthScopeNone -> left.values
+        else -> (left.values.toSet() + right.values)
+    }.joinToString("+")
+}
+
+private data class AuthScopeMinus(val left: AuthScope, val right: AuthScope) : AuthScope() {
 
     private val rightValues = right.value
 
-    override val value: String = left.values.filter { !rightValues.contains(it) }
-        .joinToString("+")
-        .takeIf { it.isNotEmpty() }
+    override val value: String = when {
+        left is AuthScopeNone -> right.values
+        right is AuthScopeNone -> left.values
+        else -> left.values.filter { !rightValues.contains(it) }
+    }.takeIf { it.isNotEmpty() }?.joinToString("+")
         ?: throw IllegalStateException("It should be at least one scope after subtracting")
 }
 

@@ -96,4 +96,16 @@ internal class AuthScopeTest : StringSpec({
     "should ignore if scope not presented after subtracting again" {
         ((AuthScope.PUBLIC + AuthScope.READ_USER) - AuthScope.PUBLIC - AuthScope.PUBLIC).value shouldBe "read_user"
     }
+
+    "should ignore empty scope" {
+        (AuthScopeNone + AuthScope.PUBLIC - AuthScopeNone).value shouldBe "public"
+        (AuthScopeNone - AuthScope.PUBLIC + AuthScopeNone + AuthScopeNone).value shouldBe "public"
+        (AuthScopeNone + AuthScopeNone).value shouldBe ""
+        (AuthScopeNone - AuthScopeNone).value shouldBe ""
+    }
+
+    "should decode scopes" {
+        AuthScope.decode("read_user write_user").value shouldBe "read_user+write_user"
+        AuthScope.decode("read_user+write_user").value shouldBe "read_user+write_user"
+    }
 })

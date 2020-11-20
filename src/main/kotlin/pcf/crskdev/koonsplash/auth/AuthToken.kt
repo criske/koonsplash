@@ -27,7 +27,14 @@ package pcf.crskdev.koonsplash.auth
  * @property accessToken Token itself.
  * @property type Type
  * @property refreshToken Refresh token used when this token expires (probably not).
+ * @property scope Access scopes of this token.
  * @property createdAt Creation date.
  * @constructor Create empty Auth token
  */
-data class AuthToken(val accessToken: String, val tokenType: String, val refreshToken: String, val createdAt: Long)
+data class AuthToken(
+    val accessToken: String,
+    val tokenType: String,
+    val refreshToken: String,
+    val scope: AuthScope,
+    val createdAt: Long
+)

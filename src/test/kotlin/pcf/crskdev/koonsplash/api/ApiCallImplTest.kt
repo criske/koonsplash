@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.util.StringSpecIT
@@ -153,7 +154,7 @@ internal class ApiCallImplTest : StringSpecIT({
             ),
             HttpClient.http,
             "key_123",
-            AuthToken("token_123", "bearer", "", 1L)
+            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
         )()
 
         with(lastRequest()) {
@@ -181,7 +182,7 @@ internal class ApiCallImplTest : StringSpecIT({
             ),
             HttpClient.http,
             "key_123",
-            AuthToken("token_123", "bearer", "", 1L)
+            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
         )()
 
         with(lastRequest()) {
@@ -207,7 +208,7 @@ internal class ApiCallImplTest : StringSpecIT({
             ),
             HttpClient.http,
             "key_123",
-            AuthToken("token_123", "bearer", "", 1L)
+            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
         )()
 
         with(lastRequest()) {

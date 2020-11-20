@@ -36,6 +36,7 @@ internal class AuthorizerImplTest : StringSpec({
         "token123",
         "bearer",
         "refresh123",
+        AuthScope.ALL,
         1
     )
 

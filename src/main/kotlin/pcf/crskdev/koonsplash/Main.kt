@@ -30,13 +30,14 @@ fun main() {
             println("Saved Token $token")
         }
 
-        override fun load(): AuthToken? =
-            AuthToken(
-                System.getenv("access_token"),
-                "bearer",
-                "",
-                System.currentTimeMillis()
-            )
+        override fun load(): AuthToken? = null
+//            AuthToken(
+//                System.getenv("access_token"),
+//                "bearer",
+//                "",
+//                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER,
+//                System.currentTimeMillis()
+//            )
 
         override fun clear() {}
     }

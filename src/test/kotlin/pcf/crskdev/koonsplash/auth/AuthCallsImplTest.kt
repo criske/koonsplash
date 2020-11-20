@@ -200,7 +200,13 @@ internal class AuthCallsImplTest : StringSpecIT({
         val result = authCalls.token("code123", "123", "123", URI.create("/"))
 
         result.isSuccess shouldBe true
-        result.getOrThrow() shouldBe AuthToken("09134xxx", "bearer", "", 1436544465)
+        result.getOrThrow() shouldBe AuthToken(
+            "09134xxx",
+            "bearer",
+            "",
+            AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS,
+            1436544465
+        )
     }
 
     "should fail getting token" {
