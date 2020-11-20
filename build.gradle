@@ -31,7 +31,7 @@ jacocoTestReport {
     }
     afterEvaluate {
         getClassDirectories().setFrom(classDirectories.files.collect {
-            fileTree(dir: it)
+            fileTree(dir: it).filter ({file -> !file.name.contains('MainKt')})
         })
     }
 }
@@ -46,7 +46,6 @@ jacocoTestCoverageVerification {
         rule {
             enabled = false
             element = 'CLASS'
-
 
             limit {
                 counter = 'LINE'
