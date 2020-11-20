@@ -1,4 +1,4 @@
-![CircleCI](https://circleci.com/gh/criske/koonsplash.svg?style=svg) ![codecov.io](https://codecov.io/github/criske/koonsplash/coverage.svg?branch=master)
+![CircleCI](https://circleci.com/gh/criske/koonsplash.svg?style=svg) [![codecov.io](https://codecov.io/github/criske/koonsplash/coverage.svg?branch=master)](https://codecov.io/github/criske/koonsplash?branch=master)
     
 # **Koonsplash**
 
