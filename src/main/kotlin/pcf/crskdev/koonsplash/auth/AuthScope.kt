@@ -54,7 +54,7 @@ sealed class AuthScope {
             (PUBLIC + READ_USER + WRITE_USER + READ_PHOTOS + WRITE_PHOTOS + WRITE_LIKES + WRITE_FOLLOWERS + READ_COLLECTIONS + WRITE_COLLECTIONS)
 
         /**
-         * Decodes a raw string of scope or scopes delimited by space.
+         * Decodes a raw string of scope or scopes delimited by space or plus.
          *
          * @param scope
          * @return AuthScope
