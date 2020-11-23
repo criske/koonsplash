@@ -24,11 +24,13 @@ package pcf.crskdev.koonsplash.auth
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.SocketPolicy
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.setBodyFromResource
 import pcf.crskdev.koonsplash.util.withHTMLHeader
 import pcf.crskdev.koonsplash.util.withJSONHeader
+import java.io.IOException
 import java.net.URI
 
 /**
@@ -216,5 +218,16 @@ internal class AuthCallsImplTest : StringSpecIT({
         shouldThrow<IllegalStateException> {
             result.getOrThrow()
         }
+    }
+
+    "should fail getting token network error" {
+        dispatchable = {
+            MockResponse()
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
+        }
+
+        val result = authCalls.token("code123", "123", "123", URI.create("/"))
+
+        result.isFailure shouldBe true
     }
 })

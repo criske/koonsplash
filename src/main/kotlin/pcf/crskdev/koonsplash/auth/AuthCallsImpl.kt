@@ -68,9 +68,8 @@ internal class AuthCallsImpl(
             .cacheControl(CacheControl.FORCE_NETWORK)
             .url(url)
             .build()
-        val response = httpClient.newCall(request).execute()
 
-        return tryResult(response) {
+        return tryResult({ httpClient.newCall(request).execute() }) { response ->
             val document = Jsoup.parse(response.body?.string())
             val authenticityToken = this.extractAuthenticityToken(document)
             this.extractAuthorizationCode(document)
@@ -94,8 +93,8 @@ internal class AuthCallsImpl(
             .cacheControl(CacheControl.FORCE_NETWORK)
             .post(form)
             .build()
-        val response = httpClient.newCall(request).execute()
-        return tryResult(response) {
+
+        return tryResult({ httpClient.newCall(request).execute() }) { response ->
             val document = Jsoup.parse(response.body?.string())
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
@@ -123,8 +122,8 @@ internal class AuthCallsImpl(
             .cacheControl(CacheControl.FORCE_NETWORK)
             .post(form)
             .build()
-        val response = httpClient.newCall(request).execute()
-        return tryResult(response) {
+
+        return tryResult({ httpClient.newCall(request).execute() }) { response ->
             val document = Jsoup.parse(response.body?.string())
             this.extractAuthorizationCode(document)
                 ?.let { Result.success(it) }
@@ -154,8 +153,8 @@ internal class AuthCallsImpl(
             .cacheControl(CacheControl.FORCE_NETWORK)
             .post(authTokenForm)
             .build()
-        val response = httpClient.newCall(request).execute()
-        return tryResult(response) {
+
+        return tryResult({ httpClient.newCall(request).execute() }) { response ->
             Result.success(response.jsonBody())
         }
     }
@@ -234,15 +233,16 @@ internal class AuthCallsImpl(
      * Try result helper.
      *
      * @param T type for result success.
-     * @param response Http response.
-     * @param block Code block on response success
+     * @param responseBlock Http response block.
+     * @param success Code block on response success
      * @receiver Returns result
      * @return Result
      */
-    private inline fun <T> tryResult(response: Response, block: () -> Result<T>): Result<T> =
+    private fun <T> tryResult(responseBlock: () -> Response, success: (Response) -> Result<T>): Result<T> =
         try {
+            val response = responseBlock()
             if (response.isSuccessful) {
-                block()
+                success(response)
             } else {
                 Result.failure(IllegalStateException(response.body?.string()))
             }
