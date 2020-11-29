@@ -35,6 +35,7 @@ import pcf.crskdev.koonsplash.auth.OneShotLoginFormController
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
+import java.net.URI
 
 /**
  * Koonsplash entry point.
@@ -64,9 +65,21 @@ interface Koonsplash : KoonsplashEntry {
      * @param password Password
      * @return [Koonsplash.Auth]
      */
-    suspend fun authenticated(email: String, password: String, scopes: AuthScope = AuthScope.ALL): Auth = coroutineScope {
-        authenticated(OneShotLoginFormController(email, password), scopes)
-    }
+    suspend fun authenticated(email: String, password: String, scopes: AuthScope = AuthScope.ALL): Auth =
+        coroutineScope {
+            authenticated(OneShotLoginFormController(email, password), scopes)
+        }
+
+    /**
+     * Authenticated session.
+     *
+     * @param scopes Scopes
+     * @param port Port that code server will listen.
+     * @param browserLauncher Browser launcher.
+     * @receiver contains URI to launch the OS browser.
+     * @return Authenticated session.
+     */
+    suspend fun authenticated(scopes: AuthScope = AuthScope.ALL, port: Int = 3000, browserLauncher: (URI) -> Unit): Auth
 
     /**
      * Koonsplash entry point for authenticated requests.
@@ -132,6 +145,14 @@ class KoonsplashBuilder internal constructor(
             this.keysLoader.accessKey,
             this.keysLoader.secretKey
         )
-        return KoonsplashSingleton(KoonsplashImpl(this.keysLoader.accessKey, this.storage, HttpClient.http, authorizer))
+        return KoonsplashSingleton(
+            KoonsplashImpl(
+                this.keysLoader.accessKey,
+                this.keysLoader.secretKey,
+                this.storage,
+                HttpClient.http,
+                authorizer
+            )
+        )
     }
 }

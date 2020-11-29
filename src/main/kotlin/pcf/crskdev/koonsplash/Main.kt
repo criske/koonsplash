@@ -52,10 +52,10 @@ fun main() {
         val api = Koonsplash.builder(keysLoader, storage)
             .build()
             .authenticated(
-                System.getenv("email"),
-                System.getenv("password"),
                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
-            )
+            ) {
+                Desktop.getDesktop().browse(it)
+            }
             .api
         scope.launch {
 
