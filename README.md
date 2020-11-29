@@ -11,7 +11,7 @@ runBlocking {
     val api = Koonsplash.builder(keysLoader, storage)
                 .build()
                 .authenticated(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER){
-                    Desktop.browse(it) // launching the broswser depends on platform
+                    Desktop.browse(it) // launching the browser depends on platform
                 }    
                 .api
     val me = api.call("/me")()
