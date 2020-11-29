@@ -21,7 +21,17 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.coroutineScope
+import okhttp3.CacheControl
+import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Request
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.http.HttpClient.executeCo
+import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
 import java.net.URI
 import java.util.concurrent.Executor
 
@@ -148,5 +158,62 @@ internal class AuthorizerImpl(
                     }
                 }
         }
+    }
+
+    @ExperimentalCoroutinesApi
+    override suspend fun authorize(
+        accessKey: AccessKey,
+        secretKey: SecretKey,
+        scopes: AuthScope,
+        server: AuthCodeServer,
+        browserLauncher: (URI) -> Unit
+    ): AuthToken = coroutineScope {
+        if (!server.startServing()) {
+            throw IllegalStateException("Auth code server hasn't started")
+        }
+        val baseAuthHttpUrl = HttpClient.baseUrl.toHttpUrlOrNull()!!
+            .newBuilder()
+            .addPathSegment("oauth")
+            .build()
+
+        val browserUrl = baseAuthHttpUrl
+            .newBuilder()
+            .addPathSegment("authorize")
+            .addQueryParameter("client_id", accessKey)
+            .addEncodedQueryParameter("redirect_uri", server.callbackUri.toString())
+            .addQueryParameter("response_type", "code")
+            .addEncodedQueryParameter("scope", scopes.value)
+            .build()
+            .toUrl()
+            .toURI()
+
+        browserLauncher(browserUrl)
+
+        val channel = produce(coroutineContext) {
+            server.onAuthorizeCode {
+                offer(it)
+                close()
+            }
+            awaitClose {
+                server.stopServing()
+            }
+        }
+
+        val authorizationCode = channel.receive()
+
+        val authTokenForm = FormBody.Builder()
+            .add("client_id", accessKey)
+            .add("client_secret", secretKey)
+            .add("redirect_uri", server.callbackUri.toString())
+            .add("code", authorizationCode)
+            .add("grant_type", "authorization_code")
+            .build()
+        val request = Request.Builder()
+            .url(baseAuthHttpUrl.newBuilder().addPathSegment("token").build())
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .post(authTokenForm)
+            .build()
+
+        HttpClient.http.newCall(request).executeCo().jsonBody()
     }
 }

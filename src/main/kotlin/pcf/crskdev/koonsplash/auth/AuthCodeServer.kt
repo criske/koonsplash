@@ -49,4 +49,12 @@ interface AuthCodeServer {
      *
      */
     fun stopServing()
+
+    /**
+     * Called when authorization code is available.
+     *
+     * @param block
+     * @receiver Contains the result with the code.
+     */
+    fun onAuthorizeCode(block: (AuthorizationCode) -> Unit)
 }
