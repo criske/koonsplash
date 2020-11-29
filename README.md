@@ -10,9 +10,7 @@ Unofficial client side Kotlin wrapper for Unsplash API.
 runBlocking {
     val api = Koonsplash.builder(keysLoader, storage)
                 .build()
-                .authenticated(
-                    AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
-                ){
+                .authenticated(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER){
                     Desktop.browse(it) // launching the broswser depends on platform
                 }    
                 .api
