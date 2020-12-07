@@ -21,33 +21,23 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
-import io.mockk.mockk
-import io.mockk.verify
+import java.net.URI
 
-internal class OneShotLoginFormControllerTest : StringSpec({
+class MockAuthCodeServer : AuthCodeServer {
 
-    "should activate once" {
-        val submitter = mockk<LoginFormSubmitter>(relaxed = true)
-        val listener = mockk<LoginFormListener>(relaxed = true)
-        val controller = OneShotLoginFormController("foo@mail.xyz", "bar").apply {
-            attachFormListener(listener)
-            attachFormSubmitter(submitter)
-        }
+    private var onAuthorizeCode: (AuthorizationCode) -> Unit = {}
 
-        controller.activateForm(null)
+    override val callbackUri: URI = URI.create("/")
 
-        verify { submitter.submit("foo@mail.xyz", "bar") }
+    override fun startServing(timeoutSec: Int): Boolean = true
 
-        val dueTo = Error("Error")
-        controller.activateForm(dueTo)
+    override fun stopServing() {}
 
-        verify {
-            submitter.giveUp(dueTo)
-            listener.onGiveUp(dueTo)
-        }
-
-        controller.isDetached() shouldBe true
+    override fun onAuthorizeCode(block: (AuthorizationCode) -> Unit) {
+        this.onAuthorizeCode = block
     }
-})
+
+    fun enqueueCode(code: AuthorizationCode) {
+        this.onAuthorizeCode(code)
+    }
+}

@@ -23,15 +23,14 @@ package pcf.crskdev.koonsplash
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
+import pcf.crskdev.koonsplash.auth.AuthApiCallImpl
+import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
-import pcf.crskdev.koonsplash.auth.LoginFormController
-import pcf.crskdev.koonsplash.auth.OneShotLoginFormController
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
@@ -49,26 +48,6 @@ interface Koonsplash : KoonsplashEntry {
      * Api
      */
     val api: Api
-
-    /**
-     * Tries to authenticate by interacting with a [LoginFormController].
-     *
-     * @param controller Controller
-     * @return [Koonsplash.Auth]
-     */
-    suspend fun authenticated(controller: LoginFormController, scopes: AuthScope = AuthScope.ALL): Auth
-
-    /**
-     * One shot authentication.
-     *
-     * @param email Email
-     * @param password Password
-     * @return [Koonsplash.Auth]
-     */
-    suspend fun authenticated(email: String, password: String, scopes: AuthScope = AuthScope.ALL): Auth =
-        coroutineScope {
-            authenticated(OneShotLoginFormController(email, password), scopes)
-        }
 
     /**
      * Authenticated session.
@@ -141,10 +120,7 @@ class KoonsplashBuilder internal constructor(
     }
 
     fun build(): Koonsplash {
-        val authorizer = AuthorizerImpl(
-            this.keysLoader.accessKey,
-            this.keysLoader.secretKey
-        )
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), AuthCodeServerImpl())
         return KoonsplashSingleton(
             KoonsplashImpl(
                 this.keysLoader.accessKey,

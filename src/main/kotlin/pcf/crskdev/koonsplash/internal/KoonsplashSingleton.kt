@@ -24,9 +24,7 @@ package pcf.crskdev.koonsplash.internal
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.KoonsplashEntry
 import pcf.crskdev.koonsplash.auth.AuthScope
-import pcf.crskdev.koonsplash.auth.LoginFormController
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
+import java.net.URI
 
 /**
  * Singleton Wrapper for [Koonsplash] lib entries.
@@ -44,42 +42,32 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
         internal var instanceInternal: KoonsplashEntry? = null
 
         /**
-         * Lock
-         */
-        private val lock = ReentrantLock()
-        /**
          * Instance that returns Koonsplash medium, authenticated or not
          */
-        val instance: KoonsplashEntry get() = lock.withLock {
-            instanceInternal ?: throw IllegalStateException("Koonsplash not initialized; use Builder first")
-        }
+        val instance: KoonsplashEntry
+            get() =
+                instanceInternal ?: throw IllegalStateException("Koonsplash not initialized; use Builder first")
     }
 
     init {
-        lock.withLock {
-            instanceInternal = this
-        }
+        instanceInternal = this
     }
 
-    override suspend fun authenticated(controller: LoginFormController, scopes: AuthScope): Koonsplash.Auth {
-        lock.withLock {
-            if (instanceInternal is Koonsplash.Auth) {
-                throw IllegalStateException("Already authenticated. Sign out first")
-            }
+    override suspend fun authenticated(scopes: AuthScope, port: Int, browserLauncher: (URI) -> Unit): Koonsplash.Auth {
+
+        if (instanceInternal is Koonsplash.Auth) {
+            throw IllegalStateException("Already authenticated. Sign out first")
         }
-        return KoonsplashSingleton.Auth(delegate.authenticated(controller, scopes)).apply {
-            lock.withLock {
-                instanceInternal = this
-            }
+
+        return KoonsplashSingleton.Auth(delegate.authenticated(scopes, port, browserLauncher)).apply {
+            instanceInternal = this
         }
     }
 
     class Auth(private val delegate: Koonsplash.Auth) : Koonsplash.Auth by delegate {
 
         override suspend fun signOut(): Koonsplash = delegate.signOut().apply {
-            lock.withLock {
-                instanceInternal = this
-            }
+            instanceInternal = this
         }
     }
 }
