@@ -29,16 +29,13 @@ import io.mockk.mockk
 import io.mockk.verify
 import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthCodeServer
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.Authorizer
-import pcf.crskdev.koonsplash.auth.LoginFormController
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.net.URI
-import java.util.concurrent.Executor
 
 @ExperimentalStdlibApi
 internal class KoonsplashImplTest : StringSpec({
@@ -68,7 +65,7 @@ internal class KoonsplashImplTest : StringSpec({
 
         every { storage.load() } returns AuthToken("token", "", "", AuthScope.ALL, 1)
 
-        val authenticated = koonsplash.authenticated("", "")
+        val authenticated = koonsplash.authenticated {}
 
         // TODO fix this
         // coVerify (exactly = 0) { authorizer.authorize(any(), any(), any(), any(), any()) }
@@ -79,21 +76,10 @@ internal class KoonsplashImplTest : StringSpec({
         val storage = mockk<AuthTokenStorage>(relaxed = true)
         val authToken = AuthToken("token", "", "", AuthScope.ALL, 1)
         val authorizer = object : Authorizer {
-            override fun authorize(
-                executor: Executor,
-                loginFormController: LoginFormController,
-                scopes: AuthScope,
-                onError: (Throwable) -> Unit,
-                onSuccess: (AuthToken) -> Unit
-            ) {
-                onSuccess(authToken)
-            }
-
             override suspend fun authorize(
                 accessKey: AccessKey,
                 secretKey: SecretKey,
                 scopes: AuthScope,
-                server: AuthCodeServer,
                 browserLauncher: (URI) -> Unit
             ): AuthToken {
                 return authToken
@@ -109,7 +95,7 @@ internal class KoonsplashImplTest : StringSpec({
 
         every { storage.load() } returns null
 
-        val authenticated = koonsplash.authenticated("foo@mail.com", "bar")
+        val authenticated = koonsplash.authenticated {}
 
         verify(exactly = 1) { storage.save(authToken) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
@@ -118,21 +104,10 @@ internal class KoonsplashImplTest : StringSpec({
     "should throw error when authorize" {
         val storage = mockk<AuthTokenStorage>(relaxed = true)
         val authorizer = object : Authorizer {
-            override fun authorize(
-                executor: Executor,
-                loginFormController: LoginFormController,
-                scopes: AuthScope,
-                onError: (Throwable) -> Unit,
-                onSuccess: (AuthToken) -> Unit
-            ) {
-                onError(IllegalStateException())
-            }
-
             override suspend fun authorize(
                 accessKey: AccessKey,
                 secretKey: SecretKey,
                 scopes: AuthScope,
-                server: AuthCodeServer,
                 browserLauncher: (URI) -> Unit
             ): AuthToken {
                 throw IllegalStateException()
@@ -149,7 +124,7 @@ internal class KoonsplashImplTest : StringSpec({
         every { storage.load() } returns null
 
         shouldThrow<IllegalStateException> {
-            koonsplash.authenticated("foo@mail.com", "bar")
+            koonsplash.authenticated {}
         }
     }
 })

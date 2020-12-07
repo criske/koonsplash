@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  * @author Cristian Pela
  * @since 0.1
  */
-internal class AuthCodeServerImpl(override val callbackUri: URI) :
+internal class AuthCodeServerImpl(override val callbackUri: URI = URI.create("http://localhost:3000")) :
     NanoHTTPD(callbackUri.host, callbackUri.port), AuthCodeServer {
 
     @Volatile

@@ -28,8 +28,6 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.coEvery
 import io.mockk.mockk
 import pcf.crskdev.koonsplash.Koonsplash
-import pcf.crskdev.koonsplash.auth.LoginFormController
-import java.lang.IllegalStateException
 
 internal class SingletonTest : StringSpec({
 
@@ -43,11 +41,11 @@ internal class SingletonTest : StringSpec({
         val singleton = KoonsplashSingleton(koonsplash)
 
         coEvery { auth.signOut() } returns koonsplash
-        coEvery { koonsplash.authenticated(any<LoginFormController>(), any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), any()) } returns auth
 
         KoonsplashSingleton.instance.shouldBeInstanceOf<Koonsplash>()
 
-        val singleAuth = singleton.authenticated(mockk())
+        val singleAuth = singleton.authenticated(browserLauncher = mockk())
 
         singleAuth.shouldBeInstanceOf<Koonsplash.Auth>()
         singleAuth shouldBeSameInstanceAs KoonsplashSingleton.instance
@@ -61,12 +59,12 @@ internal class SingletonTest : StringSpec({
     "should throw if trying to authenticate twice without sign out" {
         val koonsplash = mockk<Koonsplash>(relaxed = true)
         val auth = mockk<Koonsplash.Auth>(relaxed = true)
-        coEvery { koonsplash.authenticated(any<LoginFormController>(), any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), any()) } returns auth
 
         val singleton = KoonsplashSingleton(koonsplash)
-        singleton.authenticated(mockk())
+        singleton.authenticated(browserLauncher = mockk())
         shouldThrow<IllegalStateException> {
-            singleton.authenticated(mockk())
+            singleton.authenticated(browserLauncher = mockk())
         }
     }
 
