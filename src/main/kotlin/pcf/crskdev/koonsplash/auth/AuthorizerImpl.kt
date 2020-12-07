@@ -21,132 +21,58 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.coroutineScope
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.net.URI
-import java.util.concurrent.Executor
 
 /**
  * Authorizer implementation for authenticated API requests.
- *
- * @property accessKey Access key.
- * @property secretKey Secret key.
- * @property server Authorize code callback server.
- * @property authCalls Authorization flow calls abstraction.
- */
+ * @property apiCall Auth Api call for token.
+ **/
 internal class AuthorizerImpl(
-    private val accessKey: AccessKey,
-    private val secretKey: SecretKey,
-    private val server: AuthCodeServer = AuthCodeServerImpl(URI.create("http://localhost:3000")),
-    private val authCalls: AuthCalls = AuthCallsImpl(HttpClient.http)
+    private val apiCall: AuthApiCall,
+    private val server: AuthCodeServer,
 ) : Authorizer {
 
-    /**
-     * OAuth2 authorization flow done in background thread provided by executor.
-     * unless there is an AuthToken saved in storage.
-     *
-     * @param executor Background thread.
-     * @param loginFormController Login controller activates the login form if needed.
-     * @param onError Failed authorizing callback.
-     * @param onSuccess Success authorizing callback.
-     * @param scopes Auth Scopes
-     * @receiver onError receives the error message.
-     * @receiver onSuccess receives the AuthToken.
-     */
-    override fun authorize(
-        executor: Executor,
-        loginFormController: LoginFormController,
+    @ExperimentalCoroutinesApi
+    override suspend fun authorize(
+        accessKey: AccessKey,
+        secretKey: SecretKey,
         scopes: AuthScope,
-        onError: (Throwable) -> Unit,
-        onSuccess: (AuthToken) -> Unit
-    ) {
-        val hasStarted = server.startServing()
-        if (!hasStarted) {
-            onError(IllegalStateException("Auth code server hasn't started"))
+        browserLauncher: (URI) -> Unit
+    ): AuthToken = coroutineScope {
+        if (!server.startServing()) {
+            throw IllegalStateException("Auth code server hasn't started")
         }
-        val onSuccessAndClose: (AuthToken) -> Unit = {
-            server.stopServing()
-            onSuccess(it)
-        }
-        val onErrorAndClose: (Throwable) -> Unit = {
-            server.stopServing()
-            onError(it)
-        }
-        executor.execute {
-            authCalls
-                .authorize(accessKey, server.callbackUri, scopes)
-                .onSuccess { code ->
-                    authCalls.token(code, accessKey, secretKey, server.callbackUri)
-                        .onSuccess(onSuccessAndClose)
-                        .onFailure { onErrorAndClose(it) }
-                }.onFailure { authorizeErr ->
-                    if (authorizeErr is NeedsLoginException) {
-                        val loginFormSubmitter = object : LoginFormSubmitter {
 
-                            override fun submit(email: String, password: String) {
-                                executor.execute {
-                                    authCalls.loginForm(authorizeErr.authenticityToken, email, password)
-                                        .onSuccess { code ->
-                                            authCalls.token(code, accessKey, secretKey, server.callbackUri)
-                                                .onSuccess { token ->
-                                                    onSuccessAndClose(token)
-                                                    loginFormController.onLoginSuccess()
-                                                    loginFormController.detachAll()
-                                                }
-                                                .onFailure { tokenErr ->
-                                                    loginFormController.detachAll()
-                                                    onErrorAndClose(tokenErr)
-                                                }
-                                        }
-                                        .onFailure { loginErr ->
-                                            when (loginErr) {
-                                                InvalidCredentialsException -> {
-                                                    loginFormController.onLoginFailure(loginErr)
-                                                    loginFormController.activateForm(loginErr)
-                                                }
-                                                is NeedsConfirmAuthorizeFormException -> {
-                                                    authCalls.authorizeForm(loginErr.form)
-                                                        .onSuccess { code ->
-                                                            authCalls.token(
-                                                                code,
-                                                                accessKey,
-                                                                secretKey,
-                                                                server.callbackUri
-                                                            )
-                                                                .onSuccess { token ->
-                                                                    onSuccessAndClose(token)
-                                                                    loginFormController.onLoginSuccess()
-                                                                    loginFormController.detachAll()
-                                                                }
-                                                                .onFailure { tokenErr ->
-                                                                    loginFormController.detachAll()
-                                                                    onErrorAndClose(tokenErr)
-                                                                }
-                                                        }
-                                                        .onFailure { formError ->
-                                                            loginFormController.detachAll()
-                                                            onErrorAndClose(formError)
-                                                        }
-                                                }
-                                                else -> {
-                                                    loginFormController.detachAll()
-                                                    onErrorAndClose(loginErr)
-                                                }
-                                            }
-                                        }
-                                }
-                            }
-
-                            override fun giveUp(cause: Throwable?) {
-                                onErrorAndClose(cause ?: GiveUpException)
-                            }
-                        }
-                        loginFormController.attachFormSubmitter(loginFormSubmitter)
-                        loginFormController.activateForm(null)
-                    } else {
-                        loginFormController.detachAll()
-                        onErrorAndClose(authorizeErr)
-                    }
-                }
+        val channel = produce(coroutineContext) {
+            server.onAuthorizeCode {
+                offer(it)
+                close()
+            }
+            val browserUrl = HttpClient.baseUrl.toHttpUrlOrNull()!!
+                .newBuilder()
+                .addPathSegment("oauth")
+                .addPathSegment("authorize")
+                .addQueryParameter("client_id", accessKey)
+                .addEncodedQueryParameter("redirect_uri", server.callbackUri.toString())
+                .addQueryParameter("response_type", "code")
+                .addEncodedQueryParameter("scope", scopes.value)
+                .build()
+                .toUrl()
+                .toURI()
+            browserLauncher(browserUrl)
+            awaitClose {
+                server.stopServing()
+            }
         }
+
+        val authorizationCode = channel.receive()
+
+        apiCall.token(authorizationCode, accessKey, secretKey, server.callbackUri)
     }
 }

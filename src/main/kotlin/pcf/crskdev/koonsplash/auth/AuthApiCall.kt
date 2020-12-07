@@ -21,6 +21,13 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import okhttp3.CacheControl
+import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Request
+import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.http.HttpClient.executeCo
+import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
 import java.net.URI
 
 /**
@@ -29,43 +36,10 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
-interface AuthCalls {
+internal interface AuthApiCall {
 
     /**
-     * Request authorization code.
-     *
-     * If _NeedsLogin_ is thrown one must use _loginForm_ with
-     * _authenticityToken(csrf-token)_ that comes with the exception.
-     *
-     * @param accessKey API accessKey.
-     * @param redirectUri Redirect Uri for authorization code.
-     * @param scopes Scopes see AuthScope.
-     * @return AuthorizationCode result.
-     */
-    fun authorize(accessKey: AccessKey, redirectUri: URI, scopes: AuthScope): Result<AuthorizationCode>
-
-    /**
-     * Authorize form that should be submitted in case when scopes are other than _PUBLIC_
-     *
-     * @param authorizeForm AuthorizeForm
-     * @return AuthorizationCode
-     */
-    fun authorizeForm(authorizeForm: AuthorizeForm): Result<AuthorizationCode>
-
-    /**
-     * Intermediary step login form.
-     *
-     * On successfully login, then one must use the _authorizeForm_ with _AuthenticityToken_ from result.
-     *
-     * @param authenticityToken Csrf-token vouching for the form.
-     * @param email User's email address.
-     * @param password User's password.
-     * @return AuthorizationCode result on success.
-     */
-    fun loginForm(authenticityToken: AuthenticityToken, email: String, password: String): Result<AuthorizationCode>
-
-    /**
-     * Final request for authentication token.
+     * Request for authentication token.
      *
      * @param authorizationCode Authorization code.
      * @param accessKey API access key.
@@ -73,10 +47,46 @@ interface AuthCalls {
      * @param redirectUri A URI that handles creating a new installation-specific client_id (not used here) .
      * @return AuthToken on success.
      */
-    fun token(
+    suspend fun token(
         authorizationCode: AuthorizationCode,
         accessKey: AccessKey,
         secretKey: SecretKey,
         redirectUri: URI
-    ): Result<AuthToken>
+    ): AuthToken
+}
+
+/**
+ * Auth api call impl
+ *
+ * @constructor Create empty Auth api call impl
+ */
+internal class AuthApiCallImpl : AuthApiCall {
+
+    override suspend fun token(
+        authorizationCode: AuthorizationCode,
+        accessKey: AccessKey,
+        secretKey: SecretKey,
+        redirectUri: URI
+    ): AuthToken {
+        val authTokenForm = FormBody.Builder()
+            .add("client_id", accessKey)
+            .add("client_secret", secretKey)
+            .add("redirect_uri", redirectUri.toString())
+            .add("code", authorizationCode)
+            .add("grant_type", "authorization_code")
+            .build()
+        val request = Request.Builder()
+            .url(
+                HttpClient.baseUrl.toHttpUrlOrNull()!!
+                    .newBuilder()
+                    .addPathSegment("oauth")
+                    .addPathSegment("token")
+                    .build()
+            )
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .post(authTokenForm)
+            .build()
+
+        return HttpClient.http.newCall(request).executeCo().jsonBody()
+    }
 }

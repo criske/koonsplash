@@ -21,7 +21,7 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import java.util.concurrent.Executor
+import java.net.URI
 
 /**
  * Authorizer for authenticated API requests.
@@ -35,19 +35,18 @@ interface Authorizer {
      * OAuth2 authorization flow done in background thread provided by executor.
      * unless there is an AuthToken saved in storage.
      *
-     * @param executor Background thread.
-     * @param loginFormController Login controller activates the login form if needed.
+     * @param accessKey Access key (Client id).
+     * @param secretKey Secret key.
      * @param scopes Scopes
-     * @param onError Failed authorizing callback.
-     * @param onSuccess Success authorizing callback.
-     * @receiver onError receives the error message.
-     * @receiver onSuccess receives the AuthToken.
+     * @param server AuthCodeServer
+     * @param browserLauncher Lambda that launches the os browser app.
+     * @receiver
+     * @return AuthToken
      */
-    fun authorize(
-        executor: Executor,
-        loginFormController: LoginFormController,
+    suspend fun authorize(
+        accessKey: AccessKey,
+        secretKey: SecretKey,
         scopes: AuthScope,
-        onError: (Throwable) -> Unit,
-        onSuccess: (AuthToken) -> Unit
-    )
+        browserLauncher: (URI) -> Unit
+    ): AuthToken
 }

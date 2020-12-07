@@ -31,11 +31,16 @@ import java.util.concurrent.TimeUnit
  * @author Cristian Pela
  * @since 0.1
  */
-internal class AuthCodeServerImpl(override val callbackUri: URI) :
+internal class AuthCodeServerImpl(override val callbackUri: URI = URI.create("http://localhost:3000")) :
     NanoHTTPD(callbackUri.host, callbackUri.port), AuthCodeServer {
+
+    @Volatile
+    private var onAuthorizeCode: (AuthorizationCode) -> Unit = {}
 
     override fun serve(session: IHTTPSession): Response {
         val code = session.parms["code"]
+        if (code != null)
+            this.onAuthorizeCode(code)
         return newFixedLengthResponse(
             "<!DOCTYPE html><html><head><title>Code</title></head><body><code>$code</code></body></html>"
         )
@@ -56,5 +61,10 @@ internal class AuthCodeServerImpl(override val callbackUri: URI) :
 
     override fun stopServing() {
         stop()
+        this.onAuthorizeCode = {}
+    }
+
+    override fun onAuthorizeCode(block: (AuthorizationCode) -> Unit) {
+        this.onAuthorizeCode = block
     }
 }
