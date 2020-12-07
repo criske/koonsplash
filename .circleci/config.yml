@@ -39,7 +39,7 @@ jobs:
       - run: gradle ktlint
 
       # run tests!
-      - run: gradle test
+      - run: gradle clean test
 
       # test results!
       - run:
