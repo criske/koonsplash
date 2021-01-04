@@ -23,6 +23,8 @@ package pcf.crskdev.koonsplash.http
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
@@ -64,5 +66,23 @@ internal class HttpClientTest : StringSpecIT({
         shouldThrow<IOException> {
             templateCall().executeCo()
         }
+    }
+
+    "should cancel request" {
+        dispatchable = {
+            MockResponse()
+                .setSocketPolicy(SocketPolicy.NO_RESPONSE)
+        }
+        val call = templateCall()
+        val job = launch {
+            call.executeCo()
+        }
+
+        launch {
+            delay(500)
+            job.cancel()
+        }.join()
+
+        call.isCanceled() shouldBe true
     }
 })

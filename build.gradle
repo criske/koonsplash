@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.jetbrains.kotlin.jvm' version '1.4.10'
     id 'jacoco'
+    id 'org.barfuin.gradle.jacocolog' version '1.2.3'
 }
 
 group 'pcf.crskdev'
@@ -20,7 +21,7 @@ test {
     testLogging {
         events "PASSED", "FAILED", "SKIPPED", "STANDARD_OUT", "STANDARD_ERROR"
     }
-    finalizedBy jacocoTestReport
+    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
 }
 jacocoTestReport {
     dependsOn test // tests are required to run before generating the report
