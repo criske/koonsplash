@@ -19,21 +19,26 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.auth
+package pcf.crskdev.koonsplash
 
-/**
- * Auth type definitions and custom exceptions for Auth API.
- *
- * @author Cristian Pela
- * @since 0.1
- */
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import pcf.crskdev.koonsplash.auth.ApiKeysLoader
+import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 
-typealias AccessKey = String
-typealias AuthorizationCode = String
-typealias SecretKey = String
+@ExperimentalStdlibApi
+internal class KoonsplashBuilderTest : StringSpec({
 
-/**
- * Thrown when trying to do authenticated calls when after signed out.
- *
- */
-object SignedOutException : RuntimeException()
+    "should build" {
+        val keysLoader = mockk<ApiKeysLoader>(relaxed = true)
+        val storage = mockk<AuthTokenStorage>(relaxed = true)
+        every { keysLoader.accessKey } returns "123"
+        Koonsplash.builder(keysLoader, storage)
+            .dispatcher(Dispatchers.Main)
+            .build()
+            .shouldBeInstanceOf<Koonsplash>()
+    }
+})

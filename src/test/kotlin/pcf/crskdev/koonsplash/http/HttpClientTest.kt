@@ -23,7 +23,6 @@ package pcf.crskdev.koonsplash.http
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Call
@@ -33,7 +32,6 @@ import okhttp3.mockwebserver.SocketPolicy
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 internal class HttpClientTest : StringSpecIT({
 
@@ -87,5 +85,4 @@ internal class HttpClientTest : StringSpecIT({
 
         call.isCanceled() shouldBe true
     }
-
 })
