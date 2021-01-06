@@ -60,6 +60,9 @@ class ApiJsonResponse internal constructor(
      */
     private val apiJson = ApiJson(element, apiCall)
 
+    /**
+     * Meta.
+     */
     val meta = ApiMeta(headers, apiCall)
 
     /**

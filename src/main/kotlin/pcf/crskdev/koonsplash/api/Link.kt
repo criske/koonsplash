@@ -33,6 +33,10 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import pcf.crskdev.koonsplash.api.filter.FilterDSL
+import pcf.crskdev.koonsplash.api.filter.FilterException
+import pcf.crskdev.koonsplash.api.filter.withFilter
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
 import java.io.FileOutputStream
@@ -50,7 +54,6 @@ sealed class Link(val url: URI) {
     override fun toString(): String = this.url.toString()
 
     companion object {
-
         /**
          * Creates a link based on url.
          *
@@ -63,12 +66,12 @@ sealed class Link(val url: URI) {
             return when (uri.authority) {
                 HttpClient.apiBaseUrl.authority -> {
                     if (uri.path?.endsWith("download") == true) {
-                        Download(uri, apiCall)
+                        Download(uri, apiCall = apiCall)
                     } else {
                         Api(uri, apiCall)
                     }
                 }
-                HttpClient.imagesBaseUrl.authority -> Photo(uri)
+                HttpClient.imagesBaseUrl.authority -> Photo(uri, apiCall)
                 else -> Browser(uri)
             }
         }
@@ -112,7 +115,15 @@ sealed class Link(val url: URI) {
      * @param url Photo link url.
      * @param apiCall [ApiCall] required for download the link.
      */
-    class Download(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
+    class Download(
+        url: URI,
+        private val policy: Policy = Policy.UNSPLASH,
+        private val apiCall: (String) -> ApiCall
+    ) : Link(url) {
+
+        enum class Policy {
+            UNSPLASH, IMGIX
+        }
 
         /**
          * Downloads a photo to a file.
@@ -126,42 +137,67 @@ sealed class Link(val url: URI) {
          */
         @FlowPreview
         @ExperimentalCoroutinesApi
-        fun download(
+        fun downloadWithProgress(
             dir: File,
             fileName: String,
             progressType: ApiCall.Progress = ApiCall.Progress.Percent,
             dispatcher: CoroutineDispatcher = Dispatchers.Default,
             bufferSize: Int = 1024,
-        ): Flow<ApiCall.ProgressStatus<Photo>> {
-            return apiCall(url.toString())
-                .execute(emptyList(), ApiCall.Progress.Ignore)
-                .flatMapConcat {
-                    when (it) {
-                        is ApiCall.ProgressStatus.Done -> {
-                            val downloadUrl: String = it.resource["url"]()
-                            apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
-                                val ext = response.contentType?.subtype ?: "jpg"
-                                val file = File(dir, "$fileName.$ext")
-                                response.stream.use { input ->
-                                    val buffer = ByteArray(bufferSize)
-                                    FileOutputStream(file).use { fos ->
-                                        while (true) {
-                                            val count = input.read(buffer)
-                                            if (count < 0) {
-                                                break
-                                            }
-                                            fos.write(buffer, 0, count)
-                                        }
+        ): Flow<ApiCall.ProgressStatus<Browser>> {
+            return when (policy) {
+                Policy.UNSPLASH ->
+                    apiCall(url.toString())
+                        .execute(emptyList(), ApiCall.Progress.Ignore)
+                        .flatMapConcat {
+                            when (it) {
+                                is ApiCall.ProgressStatus.Done -> {
+                                    val downloadUrl: String = it.resource["url"]()
+                                    apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
+                                        save(response, dir, fileName, bufferSize)
                                     }
-                                    Link.Photo(file.toURI())
                                 }
+                                is ApiCall.ProgressStatus.Canceled -> flowOf(ApiCall.ProgressStatus.Canceled(it.err))
+                                else -> throw IllegalStateException("Should not reach here: $it")
                             }
                         }
-                        is ApiCall.ProgressStatus.Canceled -> flowOf(ApiCall.ProgressStatus.Canceled(it.err))
-                        else -> throw IllegalStateException("Should not reach here: $it")
+                        .flowOn(dispatcher)
+                Policy.IMGIX ->
+                    apiCall(this.url.toString()).execute(emptyList(), progressType) { response ->
+                        save(response, dir, fileName, bufferSize)
+                    }.flowOn(dispatcher)
+            }
+        }
+
+        /**
+         * Save file to disk.
+         *
+         * @param response
+         * @param dir
+         * @param fileName
+         * @param bufferSize
+         * @return Browser Link.
+         */
+        private fun save(
+            response: ApiCall.Response,
+            dir: File,
+            fileName: String,
+            bufferSize: Int
+        ): Link.Browser {
+            val ext = response.contentType?.subtype ?: "jpg"
+            val file = File(dir, "$fileName.$ext")
+            return response.stream.use { input ->
+                val buffer = ByteArray(bufferSize)
+                FileOutputStream(file).use { fos ->
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) {
+                            break
+                        }
+                        fos.write(buffer, 0, count)
                     }
                 }
-                .flowOn(dispatcher)
+                Browser(file.toURI())
+            }
         }
     }
 
@@ -172,7 +208,117 @@ sealed class Link(val url: URI) {
      *
      * @param url
      */
-    class Photo(url: URI) : Link(url)
+    class Photo(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
+
+        /**
+         * Dynamically resizable Photo dsl entry point.
+         *
+         * [See more](https://unsplash.com/documentation#dynamically-resizable-images)
+         * @param dslScopeBlock Filter scope.
+         */
+        @ExperimentalUnsignedTypes
+        fun filter(from: FilterDSL = FilterDSL.NONE, dslScopeBlock: FilterDSL.Scope.() -> Unit = {}): Filter {
+            return Filter(this.url, withFilter(from, dslScopeBlock), this.apiCall)
+        }
+
+        /**
+         * Filter logic controller.
+         *
+         * @property checked Flag that marks if baseUrl was checked for having "ixid" parameters.
+         * @property dsl DSL.
+         * @property baseUrl Initial url
+         * @property apiCall [ApiCall] required for download the photo.
+         * @constructor Create empty Filter
+         */
+        @ExperimentalUnsignedTypes
+        class Filter private constructor(
+            private val checked: Boolean,
+            private val baseUrl: URI,
+            dsl: FilterDSL,
+            private val apiCall: (String) -> ApiCall
+        ) {
+
+            /**
+             * Constructor with unchecked baseUrl.
+             */
+            internal constructor(
+                baseUrl: URI,
+                dsl: FilterDSL,
+                apiCall: (String) -> ApiCall
+            ) : this(false, baseUrl, dsl, apiCall)
+
+            /**
+             * Merged dsl fom baseUrl and the passed dsl.
+             */
+            private val mergedDSL: FilterDSL
+
+            init {
+                if (!checked && baseUrl.query?.contains("ixid=") != true) {
+                    throw FilterException("Url $baseUrl can't be used for image filtering, it must contain `ixid` parameter")
+                }
+                mergedDSL = FilterDSL.fromUrl(baseUrl).merge(dsl)
+            }
+
+            /**
+             * As download link.
+             *
+             * @return Link
+             */
+            fun asDownloadLink(): Download = Link.Download(this.url(), Download.Policy.IMGIX, apiCall)
+
+            /**
+             * As photo link.
+             *
+             * @return Link.
+             */
+            fun asPhotoLink(): Photo = Link.Photo(this.url(), apiCall)
+
+            /**
+             * Add new filter dsl this one.
+             *
+             * @param dslScopeBlock
+             * @receiver
+             * @return New Filter.
+             */
+            fun add(dslScopeBlock: FilterDSL.Scope.() -> Unit): Filter =
+                Filter(true, this.baseUrl, withFilter(this.mergedDSL, dslScopeBlock), apiCall)
+
+            /**
+             * Reset the filtering, all the filter construct will be lost.
+             *
+             * @param dslScopeBlock New filter dsl block.
+             * @receiver
+             * @return New Filter.
+             */
+            fun reset(dslScopeBlock: FilterDSL.Scope.() -> Unit = {}): Filter {
+                val ixid = this.baseUrl.toHttpUrlOrNull()!!.queryParameter("ixid")!!
+                val resetBaseUrl = this.baseUrl.toString()
+                    .let { it.substring(0, it.indexOf("?")) }
+                    .toHttpUrlOrNull()!!
+                    .newBuilder()
+                    .addQueryParameter("ixid", ixid)
+                    .build().toUri()
+                return Filter(true, resetBaseUrl, withFilter(scope = dslScopeBlock), apiCall)
+            }
+
+            /**
+             * Url created from baseUrl and filter query parameters.
+             *
+             * @return URI full url.
+             */
+            private fun url(): URI =
+                this.baseUrl
+                    .toHttpUrlOrNull()!!
+                    .newBuilder()
+                    .apply {
+                        mergedDSL().forEach { (key, value) ->
+                            setEncodedQueryParameter(key, value)
+                        }
+                    }
+                    .build()
+                    .toUri()
+        }
+    }
 }
 
 /**
@@ -186,19 +332,19 @@ sealed class Link(val url: URI) {
  */
 @ExperimentalCoroutinesApi
 @FlowPreview
-suspend fun Link.Download.downloadToPhoto(
+suspend fun Link.Download.download(
     dir: File,
     fileName: String,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
     bufferSize: Int = 1024,
-): Link.Photo = coroutineScope {
-    val channel = Channel<Link.Photo>()
-    download(dir, fileName, ApiCall.Progress.Ignore, dispatcher, bufferSize)
+): Link.Browser = coroutineScope {
+    val channel = Channel<Link.Browser>()
+    downloadWithProgress(dir, fileName, ApiCall.Progress.Ignore, dispatcher, bufferSize)
         .collect {
             when (it) {
                 is ApiCall.ProgressStatus.Done<*> ->
                     launch {
-                        channel.send(it.resource as Link.Photo)
+                        channel.send(it.resource as Link.Browser)
                     }
                 is ApiCall.ProgressStatus.Canceled ->
                     throw it.err
