@@ -44,6 +44,6 @@ val resizedPhoto = photo.filter{
     fm(Fm.PNG)
 }.toDownloadLink()
 resizedPhoto.download(File("<path>"), "my-resized-photo")
-``
+```
 
 **Work in progress...**
