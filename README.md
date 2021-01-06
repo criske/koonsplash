@@ -21,7 +21,7 @@ runBlocking {
     val photo = downloadLink.downloadToPhoto(File("<path>"), id)
     // or with progress
     downloadLink
-        .download(File("<path>"), id)
+        .downloadWithProgress(File("<path>"), id)
         .collect { status ->
             when (status) {
                 is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
@@ -32,6 +32,16 @@ runBlocking {
         }
 }        
 ```
-see `Main.kt` for more
+**DSL Support for image resizing**
+```kotlin
+val photo: Link.Photo = firstLikedPhoto["urls"]["raw"]
+val resizedPhoto = photo.filter{
+    500u.w
+    500u.h
+    fit(Fit.CROP)
+    crop(Crop.TOP, Crop.LEFT)
+}.toDownloadLink()
+resizedPhoto.download(File("<path>"), "my-resized-photo")
+``
 
 **Work in progress...**
