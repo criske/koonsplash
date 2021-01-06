@@ -3,12 +3,12 @@ package pcf.crskdev.koonsplash
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import pcf.crskdev.koonsplash.api.ApiCall
 import pcf.crskdev.koonsplash.api.Link
-import pcf.crskdev.koonsplash.api.downloadToPhoto
+import pcf.crskdev.koonsplash.api.download
+import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Fm
+import pcf.crskdev.koonsplash.api.filter.safeCrop
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthScope
@@ -20,6 +20,7 @@ import java.awt.Desktop
 import java.io.File
 import kotlin.coroutines.EmptyCoroutineContext
 
+@ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 @FlowPreview
 @ExperimentalStdlibApi
@@ -36,7 +37,7 @@ fun main() {
 //                "bearer",
 //                "",
 //                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER,
-//                System.currentTimeMillis()
+//                100
 //            )
 
         override fun clear() {}
@@ -60,28 +61,29 @@ fun main() {
         scope.launch {
 
             val me = api.call("/me")()
-
-            println(me)
-
             val myLikesLink: Link.Api = me["links"]["likes"]()
             val firstLikedPhoto = myLikesLink.call()[0]
             val downloadLink: Link.Download = firstLikedPhoto["links"]["download_location"]()
-
             val id: String = firstLikedPhoto["id"]()
-            downloadLink
-                .download(File("C:\\Users\\user\\Desktop"), id)
-                .collect { status ->
-                    when (status) {
-                        is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
-                        is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}%")
-                        is ApiCall.ProgressStatus.Done -> println("Done downloading")
-                        is ApiCall.ProgressStatus.Starting -> println("Starting")
-                    }
-                }
 
-            val photo = downloadLink
-                .downloadToPhoto(File("C:\\Users\\user\\Desktop"), id)
-            Desktop.getDesktop().browse(photo.url)
+//            downloadLink
+//                .downloadWithProgress(File("C:\\Users\\user\\Desktop"), id)
+//                .collect { status ->
+//                    when (status) {
+//                        is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
+//                        is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}%")
+//                        is ApiCall.ProgressStatus.Done -> println("Done downloading")
+//                        is ApiCall.ProgressStatus.Starting -> println("Starting")
+//                    }
+//                }
+            val rawPhoto: Link.Photo = firstLikedPhoto["urls"]["raw"]()
+            val filter = rawPhoto.filter {
+                fm(Fm.JPG)
+                safeCrop(500u)
+                80u.q
+            }
+            // Desktop.getDesktop().browse(filter.asPhotoLink().url)
+            filter.asDownloadLink().download(File("C:\\Users\\user\\Desktop"), id)
         }.join()
     }
 

@@ -48,6 +48,7 @@ import java.util.UUID
  *
  * @constructor Create empty Link test
  */
+@ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 @FlowPreview
 internal class LinkTest : StringSpecIT({
@@ -66,8 +67,7 @@ internal class LinkTest : StringSpecIT({
         photoLink.shouldBeInstanceOf<Link.Photo>()
     }
 
-    "should download a photo" {
-        println("Test " + Thread.currentThread())
+    "should download a photo with Unsplash download policy" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
         val remoteFile = resource("photo_test.png").toFile()
         dispatchable = {
@@ -88,12 +88,43 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCallProvider
+            apiCall = apiCallProvider
         )
 
-        println("Test download " + Thread.currentThread())
         val statuses = link
-            .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+            .toList()
+        val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
+        requireNotNull(fileUri)
+
+        fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
+
+        // cleanup
+        assert(File(fileUri.path).delete())
+    }
+
+    "should download a photo with Imgix download policy" {
+        val remoteFile = resource("photo_test.png").toFile()
+        dispatchable = {
+            when (path ?: "/") {
+                "/photos/Dwu85P9SOIk?ixid=1" ->
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "image/png".toMediaType())
+                        .setBodyFromFile(remoteFile)
+                else -> throw IllegalStateException("Unknown request path $path")
+            }
+        }
+
+        val link = Link.Download(
+            HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk?ixid=1"),
+            Link.Download.Policy.IMGIX,
+            apiCall = apiCallProvider
+        )
+
+        val statuses = link
+            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
         val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
         requireNotNull(fileUri)
@@ -127,9 +158,9 @@ internal class LinkTest : StringSpecIT({
         val fileUri = Link
             .Download(
                 HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                apiCallProvider
+                apiCall = apiCallProvider
             )
-            .downloadToPhoto(
+            .download(
                 fileFromPath("src", "test", "resources"),
                 "photo_test_downloaded"
             )
@@ -162,10 +193,10 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCallProvider
+            apiCall = apiCallProvider
         )
         val statuses = link
-            .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
 
         val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
@@ -190,10 +221,10 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCallProvider
+            apiCall = apiCallProvider
         )
         val statuses = link
-            .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
 
         statuses.find<LinkPhotoStatusCanceled>()?.shouldNotBeNull()
@@ -217,10 +248,10 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCallProvider
+            apiCall = apiCallProvider
         )
         val statuses = link
-            .download(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
             .toList()
 
         statuses.find<LinkPhotoStatusCanceled>()?.shouldNotBeNull()
@@ -240,9 +271,9 @@ internal class LinkTest : StringSpecIT({
             Link
                 .Download(
                     HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                    apiCallProvider
+                    apiCall = apiCallProvider
                 )
-                .downloadToPhoto(
+                .download(
                     fileFromPath("src", "test", "resources"),
                     "photo_test_downloaded"
                 )
@@ -265,7 +296,7 @@ internal class LinkTest : StringSpecIT({
                 else -> throw IllegalStateException("Unknown request path $path")
             }
         }
-        val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), apiCallProvider)
+        val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), apiCall = apiCallProvider)
         val likesLink: Link.Api = apiLink.call()["likes"]()
 
         likesLink.shouldBeInstanceOf<Link.Api>()
@@ -274,8 +305,8 @@ internal class LinkTest : StringSpecIT({
     }
 })
 
-private inline fun <reified T : ApiCall.ProgressStatus<Link.Photo>> List<ApiCall.ProgressStatus<Link.Photo>>.find(): T? =
+private inline fun <reified T : ApiCall.ProgressStatus<Link.Browser>> List<ApiCall.ProgressStatus<Link.Browser>>.find(): T? =
     find { it is T } as T?
 
-private typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Photo>
-private typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Photo>
+private typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Browser>
+private typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Browser>

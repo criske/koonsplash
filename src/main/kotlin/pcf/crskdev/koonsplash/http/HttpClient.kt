@@ -56,6 +56,7 @@ internal object HttpClient {
     var baseUrl = URI.create("https://unsplash.com/")
 
     val http = OkHttpClient.Builder()
+        .followRedirects(true)
         .cookieJar(
             JavaNetCookieJar(
                 CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }
