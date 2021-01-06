@@ -40,6 +40,8 @@ val resizedPhoto = photo.filter{
     500u.h
     fit(Fit.CROP)
     crop(Crop.TOP, Crop.LEFT)
+    100.q
+    fm(Fm.PNG)
 }.toDownloadLink()
 resizedPhoto.download(File("<path>"), "my-resized-photo")
 ``
