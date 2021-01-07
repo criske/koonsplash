@@ -22,6 +22,8 @@
 package pcf.crskdev.koonsplash.auth
 
 import fi.iki.elonen.NanoHTTPD
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
@@ -38,11 +40,42 @@ internal class AuthCodeServerImpl(override val callbackUri: URI = URI.create("ht
     private var onAuthorizeCode: (AuthorizationCode) -> Unit = {}
 
     override fun serve(session: IHTTPSession): Response {
-        val code = session.parms["code"]
-        if (code != null)
-            this.onAuthorizeCode(code)
+        val code = session.parms["code"]!!
+        val response =
+            """
+            <!DOCTYPE html>
+                <html>
+                    <head>
+                        <title>Koonsplash</title>
+                        <style>
+                            body {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                background-color: rgb(19, 18, 18);
+                                color:rgb(248, 237, 215);
+                                height: 100vh;
+                            }
+                            h1 {
+                                font-size: 3em;
+                            }
+                            h5 {
+                                font-size: 1.5em;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>Koonsplash</h1>
+                        <h5>Authorization code obtained. It is safe to close this window or tab!</h5>
+                    </body>
+            </html>
+            """.trimIndent().toByteArray()
         return newFixedLengthResponse(
-            "<!DOCTYPE html><html><head><title>Code</title></head><body><code>$code</code></body></html>"
+            Response.Status.OK,
+            MIME_HTML,
+            OnCloseInputStream(response) { this.onAuthorizeCode(code) },
+            response.size.toLong()
         )
     }
 
@@ -66,5 +99,42 @@ internal class AuthCodeServerImpl(override val callbackUri: URI = URI.create("ht
 
     override fun onAuthorizeCode(block: (AuthorizationCode) -> Unit) {
         this.onAuthorizeCode = block
+    }
+
+    /**
+     * Input stream decorator that notifies when is being closed.
+     *
+     * @property onClose Callback
+     * @constructor
+     *
+     * @param bytes Byte array
+     */
+    private class OnCloseInputStream(bytes: ByteArray, private val onClose: () -> Unit) : InputStream() {
+
+        /**
+         * Delegated byte stream.
+         */
+        private val byteStream = ByteArrayInputStream(bytes)
+
+        override fun close() {
+            byteStream.close()
+            onClose()
+        }
+
+        override fun read(): Int = byteStream.read()
+
+        override fun read(b: ByteArray): Int = byteStream.read(b)
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int = byteStream.read(b, off, len)
+
+        override fun skip(n: Long): Long = byteStream.skip(n)
+
+        override fun available(): Int = byteStream.available()
+
+        override fun mark(readlimit: Int) = byteStream.mark(readlimit)
+
+        override fun reset() = byteStream.reset()
+
+        override fun markSupported(): Boolean = byteStream.markSupported()
     }
 }
