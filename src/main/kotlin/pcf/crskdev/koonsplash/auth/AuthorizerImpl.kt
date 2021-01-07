@@ -45,11 +45,10 @@ internal class AuthorizerImpl(
         scopes: AuthScope,
         browserLauncher: (URI) -> Unit
     ): AuthToken = coroutineScope {
-        if (!server.startServing()) {
-            throw IllegalStateException("Auth code server hasn't started")
-        }
-
         val channel = produce(coroutineContext) {
+            if (!server.startServing()) {
+                throw IllegalStateException("Auth code server hasn't started")
+            }
             server.onAuthorizeCode {
                 offer(it)
                 close()
