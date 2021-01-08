@@ -79,7 +79,7 @@ internal class ApiCallImplTest : StringSpecIT({
             .execute(listOf("test", 1), ApiCall.Progress.Raw)
             .toList()
 
-        statuses.filterIsInstance<ApiCall.ProgressStatus.Current<*>>()
+        statuses.filterIsInstance<ApiCall.Status.Current<*>>()
             .toList()
             .map { it.value.toLong() }
             .maxOrNull() shouldBe resource("random.json").toFile().length()
@@ -104,7 +104,7 @@ internal class ApiCallImplTest : StringSpecIT({
             .execute(listOf("test", 1), ApiCall.Progress.Percent)
             .toList()
 
-        statuses.filterIsInstance<ApiCall.ProgressStatus.Current<*>>()
+        statuses.filterIsInstance<ApiCall.Status.Current<*>>()
             .toList()
             .map { it.value.toInt() }
             .maxOrNull() shouldBe 100
