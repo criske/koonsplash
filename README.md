@@ -26,7 +26,7 @@ runBlocking {
             when (status) {
                 is ApiCall.Status    -> status.err.printStackTrace()
                 is ApiCall.Statusent -> println("Current: ${status.value}%")
-                is ApiCall.Status    -> println("Done downloading")
+                is ApiCall.Status    -> Desktop.browse(status.resource.url)
                 is ApiCall.Status    -> println("Starting")
             }
         }
