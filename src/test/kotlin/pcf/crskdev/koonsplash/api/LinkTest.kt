@@ -305,8 +305,8 @@ internal class LinkTest : StringSpecIT({
     }
 })
 
-private inline fun <reified T : ApiCall.ProgressStatus<Link.Browser>> List<ApiCall.ProgressStatus<Link.Browser>>.find(): T? =
+private inline fun <reified T : ApiCall.Status<Link.Browser>> List<ApiCall.Status<Link.Browser>>.find(): T? =
     find { it is T } as T?
 
-private typealias LinkPhotoStatusCanceled = ApiCall.ProgressStatus.Canceled<Link.Browser>
-private typealias LinkPhotoStatusDone = ApiCall.ProgressStatus.Done<Link.Browser>
+private typealias LinkPhotoStatusCanceled = ApiCall.Status.Canceled<Link.Browser>
+private typealias LinkPhotoStatusDone = ApiCall.Status.Done<Link.Browser>

@@ -73,7 +73,7 @@ interface ApiCall {
         params: List<Param>,
         progressType: Progress = Progress.Ignore,
         transformer: (Response) -> T
-    ): Flow<ProgressStatus<T>>
+    ): Flow<Status<T>>
 
     /**
      * ApiJsonResponse execution with observing the call progress.
@@ -85,7 +85,7 @@ interface ApiCall {
     fun execute(
         params: List<Param>,
         progressType: Progress = Progress.Ignore
-    ): Flow<ProgressStatus<ApiJsonResponse>>
+    ): Flow<Status<ApiJsonResponse>>
 
     /**
      * Download progress visualization type.
@@ -120,11 +120,11 @@ interface ApiCall {
      *
      * @constructor Create empty Progress status
      */
-    sealed class ProgressStatus<T> {
-        class Canceled<T>(val err: Throwable) : ProgressStatus<T>()
-        class Current<T>(val value: Number, val length: Long) : ProgressStatus<T>()
-        class Done<T>(val resource: T) : ProgressStatus<T>()
-        class Starting<T> : ProgressStatus<T>()
+    sealed class Status<T> {
+        class Canceled<T>(val err: Throwable) : Status<T>()
+        class Current<T>(val value: Number, val length: Long) : Status<T>()
+        class Done<T>(val resource: T) : Status<T>()
+        class Starting<T> : Status<T>()
     }
 
     /**
@@ -186,9 +186,9 @@ internal class ApiCallImpl(
         produce(coroutineContext) {
             execute(param.toList()).collect {
                 when (it) {
-                    is ApiCall.ProgressStatus.Done<*> ->
+                    is ApiCall.Status.Done<*> ->
                         send(it.resource as ApiJsonResponse)
-                    is ApiCall.ProgressStatus.Canceled ->
+                    is ApiCall.Status.Canceled ->
                         throw it.err
                     else -> {
                     }
@@ -202,7 +202,7 @@ internal class ApiCallImpl(
         params: List<Param>,
         progressType: ApiCall.Progress,
         transformer: (ApiCall.Response) -> T
-    ): Flow<ApiCall.ProgressStatus<T>> = callbackFlow {
+    ): Flow<ApiCall.Status<T>> = callbackFlow {
 
         val url = endpoint.baseUrl.toHttpUrl().newBuilder()
             .apply {
@@ -230,7 +230,7 @@ internal class ApiCallImpl(
         var response: Response? = null
         try {
             if (progressType != ApiCall.Progress.Ignore) {
-                offer(ApiCall.ProgressStatus.Starting<T>())
+                offer(ApiCall.Status.Starting<T>())
             }
             response = httpClient
                 .run {
@@ -246,12 +246,12 @@ internal class ApiCallImpl(
                                             val current = ((read / totalF) * 100).roundToInt()
                                             val last = ((lastRead / totalF) * 100).roundToInt()
                                             if (current != last) {
-                                                offer(ApiCall.ProgressStatus.Current<T>(current, total))
+                                                offer(ApiCall.Status.Current<T>(current, total))
                                             }
                                         }
                                         ApiCall.Progress.Raw -> offer(
                                             ApiCall
-                                                .ProgressStatus
+                                                .Status
                                                 .Current<T>(read, total)
                                         )
                                         else -> {
@@ -267,15 +267,15 @@ internal class ApiCallImpl(
                 .executeCo()
             launch {
                 try {
-                    offer(ApiCall.ProgressStatus.Done(transformer(ResponseOkHttpWrapper(response))))
+                    offer(ApiCall.Status.Done(transformer(ResponseOkHttpWrapper(response))))
                 } catch (ex: Exception) {
-                    offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+                    offer(ApiCall.Status.Canceled<T>(ex))
                 } finally {
                     close()
                 }
             }
         } catch (ex: Exception) {
-            offer(ApiCall.ProgressStatus.Canceled<T>(ex))
+            offer(ApiCall.Status.Canceled<T>(ex))
             close()
         }
         awaitClose {
@@ -287,7 +287,7 @@ internal class ApiCallImpl(
     override fun execute(
         params: List<Param>,
         progressType: ApiCall.Progress
-    ): Flow<ApiCall.ProgressStatus<ApiJsonResponse>> =
+    ): Flow<ApiCall.Status<ApiJsonResponse>> =
         execute(params, progressType) { response ->
             val jsonReader = response.reader
             ApiJsonResponse(

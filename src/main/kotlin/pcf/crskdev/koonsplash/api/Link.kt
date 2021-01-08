@@ -143,20 +143,20 @@ sealed class Link(val url: URI) {
             progressType: ApiCall.Progress = ApiCall.Progress.Percent,
             dispatcher: CoroutineDispatcher = Dispatchers.Default,
             bufferSize: Int = 1024,
-        ): Flow<ApiCall.ProgressStatus<Browser>> {
+        ): Flow<ApiCall.Status<Browser>> {
             return when (policy) {
                 Policy.UNSPLASH ->
                     apiCall(url.toString())
                         .execute(emptyList(), ApiCall.Progress.Ignore)
                         .flatMapConcat {
                             when (it) {
-                                is ApiCall.ProgressStatus.Done -> {
+                                is ApiCall.Status.Done -> {
                                     val downloadUrl: String = it.resource["url"]()
                                     apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
                                         save(response, dir, fileName, bufferSize)
                                     }
                                 }
-                                is ApiCall.ProgressStatus.Canceled -> flowOf(ApiCall.ProgressStatus.Canceled(it.err))
+                                is ApiCall.Status.Canceled -> flowOf(ApiCall.Status.Canceled(it.err))
                                 else -> throw IllegalStateException("Should not reach here: $it")
                             }
                         }
@@ -342,11 +342,11 @@ suspend fun Link.Download.download(
     downloadWithProgress(dir, fileName, ApiCall.Progress.Ignore, dispatcher, bufferSize)
         .collect {
             when (it) {
-                is ApiCall.ProgressStatus.Done<*> ->
+                is ApiCall.Status.Done<*> ->
                     launch {
                         channel.send(it.resource as Link.Browser)
                     }
-                is ApiCall.ProgressStatus.Canceled ->
+                is ApiCall.Status.Canceled ->
                     throw it.err
                 else -> {
                 }

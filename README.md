@@ -24,10 +24,10 @@ runBlocking {
         .downloadWithProgress(File("<path>"), id)
         .collect { status ->
             when (status) {
-                is ApiCall.ProgressStatus.Canceled -> status.err.printStackTrace()
-                is ApiCall.ProgressStatus.Current -> println("Current: ${status.value}%")
-                is ApiCall.ProgressStatus.Done -> println("Done downloading")
-                is ApiCall.ProgressStatus.Starting -> println("Starting")
+                is ApiCall.Status    -> status.err.printStackTrace()
+                is ApiCall.Statusent -> println("Current: ${status.value}%")
+                is ApiCall.Status    -> println("Done downloading")
+                is ApiCall.Status    -> println("Starting")
             }
         }
 }        
