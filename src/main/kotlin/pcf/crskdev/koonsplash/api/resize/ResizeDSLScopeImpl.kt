@@ -19,7 +19,7 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api.filter
+package pcf.crskdev.koonsplash.api.resize
 
 /**
  * Filter d s l scope impl.
@@ -30,21 +30,21 @@ package pcf.crskdev.koonsplash.api.filter
  * @since 0.1
  */
 @ExperimentalUnsignedTypes
-internal class FilterDSLScopeImpl(internal val parameters: MutableMap<String, String>) : FilterDSL.Scope {
+internal class ResizeDSLScopeImpl(internal val parameters: MutableMap<String, String>) : ResizeDSL.Scope {
 
-    override fun crop(vararg crop: FilterDSL.Scope.Crop) {
+    override fun crop(vararg crop: ResizeDSL.Scope.Crop) {
         parameters["crop"] = crop.joinToString(",") { it.toString().toLowerCase() }
     }
 
-    override fun fm(fm: FilterDSL.Scope.Fm) {
+    override fun fm(fm: ResizeDSL.Scope.Fm) {
         parameters["fm"] = fm.toString().toLowerCase()
     }
 
-    override fun auto(auto: FilterDSL.Scope.Auto) {
+    override fun auto(auto: ResizeDSL.Scope.Auto) {
         parameters["auto"] = auto.toString().toLowerCase()
     }
 
-    override fun fit(fit: FilterDSL.Scope.Fit) {
+    override fun fit(fit: ResizeDSL.Scope.Fit) {
         parameters["fit"] = fit.toString().toLowerCase()
     }
 
