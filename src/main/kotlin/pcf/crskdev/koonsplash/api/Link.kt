@@ -34,9 +34,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import pcf.crskdev.koonsplash.api.filter.FilterDSL
-import pcf.crskdev.koonsplash.api.filter.FilterException
-import pcf.crskdev.koonsplash.api.filter.withFilter
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL
+import pcf.crskdev.koonsplash.api.resize.ResizeException
+import pcf.crskdev.koonsplash.api.resize.withResize
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
 import java.io.FileOutputStream
@@ -214,27 +214,27 @@ sealed class Link(val url: URI) {
          * Dynamically resizable Photo dsl entry point.
          *
          * [See more](https://unsplash.com/documentation#dynamically-resizable-images)
-         * @param dslScopeBlock Filter scope.
+         * @param dslScopeBlock Resize scope.
          */
         @ExperimentalUnsignedTypes
-        fun filter(from: FilterDSL = FilterDSL.NONE, dslScopeBlock: FilterDSL.Scope.() -> Unit = {}): Filter {
-            return Filter(this.url, withFilter(from, dslScopeBlock), this.apiCall)
+        fun resize(from: ResizeDSL = ResizeDSL.NONE, dslScopeBlock: ResizeDSL.Scope.() -> Unit = {}): Resize {
+            return Resize(this.url, withResize(from, dslScopeBlock), this.apiCall)
         }
 
         /**
-         * Filter logic controller.
+         * Resize logic controller.
          *
          * @property checked Flag that marks if baseUrl was checked for having "ixid" parameters.
-         * @property dsl DSL.
+         * @property dsl ResizeDSL.
          * @property baseUrl Initial url
          * @property apiCall [ApiCall] required for download the photo.
-         * @constructor Create empty Filter
+         * @constructor Create empty Resize
          */
         @ExperimentalUnsignedTypes
-        class Filter private constructor(
+        class Resize private constructor(
             private val checked: Boolean,
             private val baseUrl: URI,
-            dsl: FilterDSL,
+            dsl: ResizeDSL,
             private val apiCall: (String) -> ApiCall
         ) {
 
@@ -243,20 +243,20 @@ sealed class Link(val url: URI) {
              */
             internal constructor(
                 baseUrl: URI,
-                dsl: FilterDSL,
+                dsl: ResizeDSL,
                 apiCall: (String) -> ApiCall
             ) : this(false, baseUrl, dsl, apiCall)
 
             /**
              * Merged dsl fom baseUrl and the passed dsl.
              */
-            private val mergedDSL: FilterDSL
+            private val mergedDSL: ResizeDSL
 
             init {
                 if (!checked && baseUrl.query?.contains("ixid=") != true) {
-                    throw FilterException("Url $baseUrl can't be used for image filtering, it must contain `ixid` parameter")
+                    throw ResizeException("Url $baseUrl can't be used for image resize, it must contain `ixid` parameter")
                 }
-                mergedDSL = FilterDSL.fromUrl(baseUrl).merge(dsl)
+                mergedDSL = ResizeDSL.fromUrl(baseUrl).merge(dsl)
             }
 
             /**
@@ -274,23 +274,23 @@ sealed class Link(val url: URI) {
             fun asPhotoLink(): Photo = Link.Photo(this.url(), apiCall)
 
             /**
-             * Add new filter dsl this one.
+             * Add new Resize dsl this one.
              *
              * @param dslScopeBlock
              * @receiver
-             * @return New Filter.
+             * @return New Resize.
              */
-            fun add(dslScopeBlock: FilterDSL.Scope.() -> Unit): Filter =
-                Filter(true, this.baseUrl, withFilter(this.mergedDSL, dslScopeBlock), apiCall)
+            fun add(dslScopeBlock: ResizeDSL.Scope.() -> Unit): Resize =
+                Resize(true, this.baseUrl, withResize(this.mergedDSL, dslScopeBlock), apiCall)
 
             /**
-             * Reset the filtering, all the filter construct will be lost.
+             * Reset the resizing, all the Resize construct will be lost.
              *
-             * @param dslScopeBlock New filter dsl block.
+             * @param dslScopeBlock New Resize dsl block.
              * @receiver
-             * @return New Filter.
+             * @return New Resize.
              */
-            fun reset(dslScopeBlock: FilterDSL.Scope.() -> Unit = {}): Filter {
+            fun reset(dslScopeBlock: ResizeDSL.Scope.() -> Unit = {}): Resize {
                 val ixid = this.baseUrl.toHttpUrlOrNull()!!.queryParameter("ixid")!!
                 val resetBaseUrl = this.baseUrl.toString()
                     .let { it.substring(0, it.indexOf("?")) }
@@ -298,11 +298,11 @@ sealed class Link(val url: URI) {
                     .newBuilder()
                     .addQueryParameter("ixid", ixid)
                     .build().toUri()
-                return Filter(true, resetBaseUrl, withFilter(scope = dslScopeBlock), apiCall)
+                return Resize(true, resetBaseUrl, withResize(scope = dslScopeBlock), apiCall)
             }
 
             /**
-             * Url created from baseUrl and filter query parameters.
+             * Url created from baseUrl and Resize query parameters.
              *
              * @return URI full url.
              */

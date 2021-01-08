@@ -7,8 +7,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pcf.crskdev.koonsplash.api.Link
 import pcf.crskdev.koonsplash.api.download
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Fm
-import pcf.crskdev.koonsplash.api.filter.safeCrop
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Fm
+import pcf.crskdev.koonsplash.api.resize.safeCrop
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthScope
@@ -77,7 +77,7 @@ fun main() {
 //                    }
 //                }
             val rawPhoto: Link.Photo = firstLikedPhoto["urls"]["raw"]()
-            val filter = rawPhoto.filter {
+            val filter = rawPhoto.resize {
                 fm(Fm.JPG)
                 safeCrop(500u)
                 80u.q

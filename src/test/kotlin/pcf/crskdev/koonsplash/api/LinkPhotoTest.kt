@@ -27,10 +27,10 @@ import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import pcf.crskdev.koonsplash.api.filter.FilterDSL
-import pcf.crskdev.koonsplash.api.filter.FilterException
-import pcf.crskdev.koonsplash.api.filter.safeCrop
-import pcf.crskdev.koonsplash.api.filter.withFilter
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL
+import pcf.crskdev.koonsplash.api.resize.ResizeException
+import pcf.crskdev.koonsplash.api.resize.safeCrop
+import pcf.crskdev.koonsplash.api.resize.withResize
 import java.net.URI
 
 @ExperimentalUnsignedTypes
@@ -42,18 +42,18 @@ internal class LinkPhotoTest : StringSpec({
         this.newBuilder().apply(builderScope).build()
 
     "should check if url has `ixid` parameter set" {
-        shouldThrow<FilterException> {
-            Link.Photo(URI.create("/"), mockk()).filter {}
+        shouldThrow<ResizeException> {
+            Link.Photo(URI.create("/"), mockk()).resize {}
         }
 
-        Link.Photo(baseUrl.toUri(), mockk()).filter {}
+        Link.Photo(baseUrl.toUri(), mockk()).resize {}
     }
 
-    "should apply filter" {
+    "should apply resize" {
         Link.Photo(baseUrl.toUri(), mockk())
-            .filter {
-                fm(FilterDSL.Scope.Fm.JPG)
-                safeCrop(500u, FilterDSL.Scope.Crop.FACES)
+            .resize {
+                fm(ResizeDSL.Scope.Fm.JPG)
+                safeCrop(500u, ResizeDSL.Scope.Crop.FACES)
                 80u.q
             }
             .asPhotoLink()
@@ -66,7 +66,7 @@ internal class LinkPhotoTest : StringSpec({
         }.toUri()
     }
 
-    "should overwrite filter from base url" {
+    "should overwrite resize from base url" {
         val photo = Link.Photo(
             baseUrl.buildQueries {
                 addQueryParameter("h", "100")
@@ -75,7 +75,7 @@ internal class LinkPhotoTest : StringSpec({
             }.toUri(),
             mockk()
         )
-        photo.filter {
+        photo.resize {
             10u.w
         }.asPhotoLink().url shouldBe baseUrl.buildQueries {
             addQueryParameter("h", "100")
@@ -84,11 +84,11 @@ internal class LinkPhotoTest : StringSpec({
         }.toUri()
     }
 
-    "should add new filter from photo link" {
+    "should add new resize from photo link" {
         Link.Photo(baseUrl.toUri(), mockk())
-            .filter { 10u.w }
+            .resize { 10u.w }
             .asPhotoLink()
-            .filter { 100u.h }
+            .resize { 100u.h }
             .asPhotoLink().url shouldBe baseUrl
             .buildQueries {
                 addQueryParameter("w", "10")
@@ -96,9 +96,9 @@ internal class LinkPhotoTest : StringSpec({
             }.toUri()
     }
 
-    "should add new filter upon existent one" {
+    "should add new resize upon existent one" {
         Link.Photo(baseUrl.toUri(), mockk())
-            .filter { 10u.w }
+            .resize { 10u.w }
             .add { 100u.h }
             .asPhotoLink().url shouldBe baseUrl
             .buildQueries {
@@ -107,7 +107,7 @@ internal class LinkPhotoTest : StringSpec({
             }.toUri()
 
         Link.Photo(baseUrl.toUri(), mockk())
-            .filter(withFilter { 10u.w }) { 100u.h }
+            .resize(withResize { 10u.w }) { 100u.h }
             .asPhotoLink().url shouldBe baseUrl
             .buildQueries {
                 addQueryParameter("w", "10")
@@ -115,9 +115,9 @@ internal class LinkPhotoTest : StringSpec({
             }.toUri()
     }
 
-    "should add reset filter upon existent one" {
+    "should add reset resize upon existent one" {
         Link.Photo(baseUrl.toUri(), mockk())
-            .filter { 10u.w }
+            .resize { 10u.w }
             .add { 100u.h }
             .reset { this.auto() }
             .asPhotoLink().url shouldBe baseUrl
@@ -125,7 +125,7 @@ internal class LinkPhotoTest : StringSpec({
                 addQueryParameter("auto", "format")
             }.toUri()
         Link.Photo(baseUrl.buildQueries { addQueryParameter("q", "10") }.toUri(), mockk())
-            .filter { 10u.w }
+            .resize { 10u.w }
             .add { 100u.h }
             .reset()
             .asPhotoLink().url shouldBe baseUrl

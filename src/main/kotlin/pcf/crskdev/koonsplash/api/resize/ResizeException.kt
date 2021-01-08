@@ -19,12 +19,12 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api.filter
+package pcf.crskdev.koonsplash.api.resize
 
 import java.lang.RuntimeException
 
 /**
- * Filter exception.
+ * Resize exception.
  *
  * @constructor
  *
@@ -32,4 +32,4 @@ import java.lang.RuntimeException
  * @author Cristian Pela
  * @since 0.1
  */
-class FilterException(message: String) : RuntimeException(message)
+class ResizeException(message: String) : RuntimeException(message)

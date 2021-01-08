@@ -19,23 +19,23 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api.filter
+package pcf.crskdev.koonsplash.api.resize
 
 import java.net.URI
 
 /**
- * Filter d s l.
+ * Resize d s l.
  *
  * [See more](https://unsplash.com/documentation#dynamically-resizable-images)
  *
  * @property parameters
  * @property scopeBlock
- * @constructor Create empty Filter d s l
+ * @constructor Create empty Resize d s l
  * @author Cristian Pela
  * @since 0.1
  */
 @ExperimentalUnsignedTypes
-class FilterDSL internal constructor(
+class ResizeDSL internal constructor(
     private val parameters: Map<String, String>,
     private val scopeBlock: Scope.() -> Unit = {}
 ) {
@@ -48,9 +48,9 @@ class FilterDSL internal constructor(
         private val PARAMETER_KEYS = listOf("crop", "fm", "auto", "fit", "w", "h", "dpr")
 
         /**
-         * N o n e representation of FilterDSL.
+         * N o n e representation of ResizeDSL.
          */
-        val NONE = FilterDSL(mutableMapOf())
+        val NONE = ResizeDSL(mutableMapOf())
 
         /**
          * Creates a dsl from uri query parameters.
@@ -65,7 +65,7 @@ class FilterDSL internal constructor(
                     this[key] = value
                 }
             }?.let {
-                FilterDSL(it)
+                ResizeDSL(it)
             } ?: NONE
     }
 
@@ -186,7 +186,7 @@ class FilterDSL internal constructor(
         val UInt.dpr: Unit
     }
 
-    private val scope: FilterDSLScopeImpl
+    private val scope: ResizeDSLScopeImpl
 
     init {
         // hook-up the scope
@@ -197,7 +197,7 @@ class FilterDSL internal constructor(
                 mutableParameters[k] = v
             }
         }
-        scope = FilterDSLScopeImpl(mutableParameters).apply(this.scopeBlock)
+        scope = ResizeDSLScopeImpl(mutableParameters).apply(this.scopeBlock)
     }
 
     /**
@@ -210,17 +210,17 @@ class FilterDSL internal constructor(
         if (
             parameters.containsKey("crop") && (!parameters.containsKey("w") || !parameters.containsKey("h") || !parameters.containsKey("fit") || (parameters.containsKey("fit") && parameters["fit"] != "crop"))
         ) {
-            throw FilterException("When applying crop parameters `w`,`h` and `fit` as `crop` must be set")
+            throw ResizeException("When applying crop parameters `w`,`h` and `fit` as `crop` must be set")
         }
         if (parameters["q"]?.toUInt() ?: 100u > 100u) {
-            throw FilterException("Quality must be between 0 and 100")
+            throw ResizeException("Quality must be between 0 and 100")
         }
         if (parameters.containsKey("dpr")) {
             if (!parameters.containsKey("w") || !parameters.containsKey("h")) {
-                throw FilterException("In order that dpr to work, both w and h parameters must be set")
+                throw ResizeException("In order that dpr to work, both w and h parameters must be set")
             }
             if (parameters["dpr"]!!.toUInt() !in (1u..5u)) {
-                throw FilterException("Dpr value must be between 1 and 5")
+                throw ResizeException("Dpr value must be between 1 and 5")
             }
         }
         return parameters.toMap()
@@ -234,58 +234,58 @@ class FilterDSL internal constructor(
      * @receiver
      * @return new Dsl
      */
-    fun merge(other: FilterDSL, scope: FilterDSL.Scope.() -> Unit = {}): FilterDSL {
+    fun merge(other: ResizeDSL, scope: ResizeDSL.Scope.() -> Unit = {}): ResizeDSL {
         val merged = mutableMapOf<String, String>().apply {
-            this.putAll(this@FilterDSL())
+            this.putAll(this@ResizeDSL())
             this.putAll(other())
         }
-        return FilterDSL(merged, scope)
+        return ResizeDSL(merged, scope)
     }
 }
 
 /**
- * Filter dsl creator.
+ * Resize dsl creator.
  *
  * @param scope Scope
  * @param from From other DSL config.
  * @receiver
- * @return Filter Dsl
+ * @return Resize Dsl
  */
 @ExperimentalUnsignedTypes
-fun withFilter(
-    from: FilterDSL = FilterDSL.NONE,
-    scope: FilterDSL.Scope.() -> Unit = {}
-): FilterDSL = FilterDSL(emptyMap()).merge(from, scope)
+fun withResize(
+    from: ResizeDSL = ResizeDSL.NONE,
+    scope: ResizeDSL.Scope.() -> Unit = {}
+): ResizeDSL = ResizeDSL(emptyMap()).merge(from, scope)
 
 /**
- * Ensure that crop parameter is properly set without throwing a FilterDSLException.
+ * Ensure that crop parameter is properly set without throwing a ResizeException.
  *
  * @param width Width
  * @param height Height
  * @param crop Crop
  */
 @ExperimentalUnsignedTypes
-fun FilterDSL.Scope.safeCrop(width: UInt, height: UInt, vararg crop: FilterDSL.Scope.Crop) {
+fun ResizeDSL.Scope.safeCrop(width: UInt, height: UInt, vararg crop: ResizeDSL.Scope.Crop) {
     if (crop.isEmpty()) {
-        throw FilterException("At least one crop type must be set when safe cropping")
+        throw ResizeException("At least one crop type must be set when safe cropping")
     }
     width.w
     height.h
-    fit(FilterDSL.Scope.Fit.CROP)
+    fit(ResizeDSL.Scope.Fit.CROP)
     crop(*crop)
 }
 
 /**
- * Ensure that crop parameter is properly set without throwing a FilterDSLException.
+ * Ensure that crop parameter is properly set without throwing a ResizeException.
  *
  * @param size Size in pixels
  * @param crop Crop
  */
 @ExperimentalUnsignedTypes
-fun FilterDSL.Scope.safeCrop(size: UInt, vararg crop: FilterDSL.Scope.Crop) {
+fun ResizeDSL.Scope.safeCrop(size: UInt, vararg crop: ResizeDSL.Scope.Crop) {
     size.w
     size.h
-    fit(FilterDSL.Scope.Fit.CROP)
+    fit(ResizeDSL.Scope.Fit.CROP)
     crop(*crop)
 }
 
@@ -297,7 +297,7 @@ fun FilterDSL.Scope.safeCrop(size: UInt, vararg crop: FilterDSL.Scope.Crop) {
  * @param dpr Dpr
  */
 @ExperimentalUnsignedTypes
-fun FilterDSL.Scope.safeDpr(width: UInt, height: UInt, dpr: UInt) {
+fun ResizeDSL.Scope.safeDpr(width: UInt, height: UInt, dpr: UInt) {
     width.w
     height.h
     dpr.dpr

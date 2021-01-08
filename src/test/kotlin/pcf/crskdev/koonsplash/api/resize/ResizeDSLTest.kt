@@ -19,28 +19,28 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-package pcf.crskdev.koonsplash.api.filter
+package pcf.crskdev.koonsplash.api.resize
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.BOTTOM
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.EDGES
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.ENTROPY
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.FACES
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.FOCALPOINT
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.LEFT
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.RIGHT
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Crop.TOP
-import pcf.crskdev.koonsplash.api.filter.FilterDSL.Scope.Fit.CROP
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.BOTTOM
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.EDGES
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.ENTROPY
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.FACES
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.FOCALPOINT
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.LEFT
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.RIGHT
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Crop.TOP
+import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Fit.CROP
 
 @ExperimentalUnsignedTypes
-internal class FilterDSLTest : StringSpec({
+internal class ResizeDSLTest : StringSpec({
 
     "should add parameters and can overwrite" {
 
-        val params = withFilter {
+        val params = withResize {
             100u.w
             200u.w
             500u.h
@@ -68,12 +68,12 @@ internal class FilterDSLTest : StringSpec({
 
     "should create dsl from other dsl" {
 
-        val dsl = withFilter {
+        val dsl = withResize {
             100u.w
             500u.h
         }
 
-        val params = withFilter(dsl) {
+        val params = withResize(dsl) {
             50u.q
         }()
 
@@ -87,15 +87,15 @@ internal class FilterDSLTest : StringSpec({
     }
 
     "should throw when `crop` if `fit` as crop, `w` and `h` are not set" {
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 crop(TOP, BOTTOM)
             }()
         }
     }
 
     "should set crop parameter" {
-        withFilter {
+        withResize {
             100u.w
             500u.h
             fit(CROP)
@@ -107,7 +107,7 @@ internal class FilterDSLTest : StringSpec({
             "crop" to "entropy"
         )
 
-        withFilter {
+        withResize {
             safeCrop(
                 100u, 500u,
                 ENTROPY, LEFT, RIGHT, FACES, FOCALPOINT, EDGES
@@ -121,45 +121,45 @@ internal class FilterDSLTest : StringSpec({
     }
 
     "should throw if at least on crop type is not set in `safeCrop`" {
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 safeCrop(100u, 500u)
             }
         }
     }
 
     "should ensure that quality is between 0 and 100" {
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 200u.q
             }()
         }
-        withFilter {
+        withResize {
             50u.q
         }() shouldBe mapOf("q" to "50")
     }
 
     "should ensure that dpr can be set" {
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 1u.dpr
             }()
         }
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 1u.w
                 1u.h
                 0u.dpr
             }()
         }
-        shouldThrow<FilterException> {
-            withFilter {
+        shouldThrow<ResizeException> {
+            withResize {
                 1u.w
                 1u.h
                 6u.dpr
             }()
         }
-        withFilter {
+        withResize {
             safeDpr(1u, 2u, 3u)
         }() shouldBe mapOf(
             "w" to "1",
