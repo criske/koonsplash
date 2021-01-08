@@ -17,10 +17,10 @@ runBlocking {
     val me = api.call("/me")()
     val myLikesLink: Link.Api = me["links"]["likes"]()
     val firstLikedPhoto = myLikesLink.call()[0]
-    val downloadLink: Link.Download = firstLikedPhoto["links"]["download_location"]()
-    val photo = downloadLink.downloadToPhoto(File("<path>"), id)
+    val link: Link.Download = firstLikedPhoto["links"]["download_location"]()
+    val photo: Link.Browser = link.download(File("<path>"), id)
     // or with progress
-    downloadLink
+    link
         .downloadWithProgress(File("<path>"), id)
         .collect { status ->
             when (status) {
@@ -35,7 +35,7 @@ runBlocking {
 **DSL Support for image resizing**
 ```kotlin
 val photo: Link.Photo = firstLikedPhoto["urls"]["raw"]
-val resizedPhoto = photo.filter{
+val resizedPhoto = photo.resize{
     500u.w
     500u.h
     fit(Fit.CROP)
