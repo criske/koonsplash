@@ -28,11 +28,9 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.runBlockingTest
 import pcf.crskdev.koonsplash.Koonsplash
-import pcf.crskdev.koonsplash.auth.AuthScope
-import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
+import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SignedOutException
 import pcf.crskdev.koonsplash.http.HttpClient
 
@@ -45,19 +43,16 @@ internal class KoonsplashAuthImplTest : StringSpec({
         every { public.api } returns (mockk())
 
         val koonsplash = KoonsplashAuthImpl(
-            AuthToken("", "", "", AuthScope.ALL, 0),
-            "key",
             public,
-            storage,
+            CachedAuthContext(storage, ""),
             HttpClient.http
         )
-        runBlockingTest {
-            val backToPublic = koonsplash.signOut()
-            verify { storage.clear() }
-            backToPublic shouldBeSameInstanceAs public
-            shouldThrow<SignedOutException> {
-                koonsplash.api.me()
-            }
+
+        val backToPublic = koonsplash.signOut()
+        verify { storage.clear() }
+        backToPublic shouldBeSameInstanceAs public
+        shouldThrow<SignedOutException> {
+            koonsplash.api.me()
         }
     }
 })

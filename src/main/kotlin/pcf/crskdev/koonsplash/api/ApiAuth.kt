@@ -22,8 +22,7 @@
 package pcf.crskdev.koonsplash.api
 
 import okhttp3.OkHttpClient
-import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthToken
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.http.HttpClient
 
 /**
@@ -34,27 +33,25 @@ import pcf.crskdev.koonsplash.http.HttpClient
  */
 interface ApiAuth : Api {
 
-    suspend fun me(verb: Verb = Verb.Get): ApiCall
+    suspend fun me(verb: Verb = Verb.Get): ApiJsonResponse
 }
 
 /**
  * Api auth implementation.
  *
  * @property httpClient Http client.
- * @property accessKey Access key.
- * @property authToken Auth token.
+ * @property authContext AuthContext.
  * @constructor
  * @param api Delegates unauthenticated API.
  */
-class ApiAuthImpl(
+internal class ApiAuthImpl(
     api: Api,
     private val httpClient: OkHttpClient,
-    private val accessKey: AccessKey,
-    private val authToken: AuthToken
+    private val authContext: AuthContext
 ) : ApiAuth, Api by api {
 
-    override suspend fun me(verb: Verb) = call("/me", verb)
+    override suspend fun me(verb: Verb) = call("/me", verb)()
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, accessKey, authToken)
+        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, authContext)
 }

@@ -37,6 +37,7 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
 import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
 import pcf.crskdev.koonsplash.http.HttpClient.withProgressListener
@@ -175,8 +176,7 @@ interface ApiCall {
 internal class ApiCallImpl(
     private val endpoint: Endpoint,
     private val httpClient: OkHttpClient,
-    private val accessKey: AccessKey,
-    private val authToken: AuthToken?
+    private val authContext: AuthContext
 ) : ApiCall {
 
     private val endpointParser = EndpointParser(endpoint)
@@ -214,8 +214,9 @@ internal class ApiCallImpl(
                 }
             }
             .build()
+        val token = authContext.getToken()
         val request = Request.Builder()
-            .addKoonsplashHeaders()
+            .addKoonsplashHeaders(token, authContext.accessKey)
             .url(url)
             .apply {
                 when (endpoint.verb) {
@@ -291,7 +292,7 @@ internal class ApiCallImpl(
         execute(params, progressType) { response ->
             val jsonReader = response.reader
             ApiJsonResponse(
-                { link -> ApiCallImpl(Endpoint(link), httpClient, accessKey, authToken) },
+                { link -> ApiCallImpl(Endpoint(link), httpClient, authContext) },
                 jsonReader,
                 response.headers
             )
@@ -306,12 +307,12 @@ internal class ApiCallImpl(
             }
             .build()
 
-    private fun Request.Builder.addKoonsplashHeaders(): Request.Builder =
+    private fun Request.Builder.addKoonsplashHeaders(token: AuthToken?, accessKey: AccessKey): Request.Builder =
         addHeader("Accept-Version", "v1")
             .addHeader("Authorization", "Client-ID $accessKey")
             .apply {
-                if (authToken != null) {
-                    addHeader("Authorization", "Bearer ${authToken.accessToken}")
+                if (token != null) {
+                    addHeader("Authorization", "Bearer ${token.accessToken}")
                 }
             }
 

@@ -31,6 +31,7 @@ import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
+import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
@@ -121,11 +122,11 @@ class KoonsplashBuilder internal constructor(
 
     fun build(): Koonsplash {
         val authorizer = AuthorizerImpl(AuthApiCallImpl(), AuthCodeServerImpl())
+        val authContext = CachedAuthContext(this.storage, this.keysLoader.accessKey)
         return KoonsplashSingleton(
             KoonsplashImpl(
-                this.keysLoader.accessKey,
                 this.keysLoader.secretKey,
-                this.storage,
+                authContext,
                 HttpClient.http,
                 authorizer
             )

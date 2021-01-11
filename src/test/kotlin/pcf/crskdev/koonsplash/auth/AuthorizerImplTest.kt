@@ -22,10 +22,12 @@
 package pcf.crskdev.koonsplash.auth
 
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.withJSONHeader
 
+@ExperimentalCoroutinesApi
 internal class AuthorizerImplTest : StringSpecIT({
 
     "should authorize and get token" {

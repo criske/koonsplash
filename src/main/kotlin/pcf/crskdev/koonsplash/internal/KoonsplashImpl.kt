@@ -25,10 +25,10 @@ import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiImpl
-import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthScope
-import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.Authorizer
+import pcf.crskdev.koonsplash.auth.ClearableAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
 
@@ -46,29 +46,24 @@ import java.net.URI
  */
 @ExperimentalStdlibApi
 class KoonsplashImpl(
-    private val accessKey: AccessKey,
     private val secretKey: SecretKey,
-    private val storage: AuthTokenStorage,
+    private val authContext: ClearableAuthContext,
     private val httpClient: OkHttpClient,
     private val authorizer: Authorizer
 ) : Koonsplash {
 
-    override val api: Api = ApiImpl(httpClient, accessKey)
+    override val api: Api = ApiImpl(httpClient, AuthContext.None(this.authContext.accessKey))
 
     override suspend fun authenticated(scopes: AuthScope, port: Int, browserLauncher: (URI) -> Unit): Koonsplash.Auth {
-        val authToken = storage.load()
-        val authTokenEnsured = if (authToken == null) {
+        if (!this.authContext.hasToken()) {
             val newAuthToken = authorizer.authorize(
-                this.accessKey,
+                this.authContext.accessKey,
                 this.secretKey,
                 scopes,
                 browserLauncher
             )
-            storage.save(newAuthToken)
-            newAuthToken
-        } else {
-            authToken
+            this.authContext.reset(newAuthToken)
         }
-        return KoonsplashAuthImpl(authTokenEnsured, accessKey, this@KoonsplashImpl, storage, httpClient)
+        return KoonsplashAuthImpl(this, this.authContext, httpClient)
     }
 }
