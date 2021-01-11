@@ -31,6 +31,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.toList
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.http.HttpException
 import pcf.crskdev.koonsplash.util.StringSpecIT
@@ -53,7 +54,7 @@ import java.util.UUID
 @FlowPreview
 internal class LinkTest : StringSpecIT({
 
-    val apiCallProvider: (String) -> ApiCall = { url -> ApiCallImpl(Endpoint(url), HttpClient.http, "", null) }
+    val apiCallProvider: (String) -> ApiCall = { url -> ApiCallImpl(Endpoint(url), HttpClient.http, AuthContext.None("")) }
 
     "should create the correct links" {
         val apiLink = Link.create({ mockk() }, HttpClient.apiBaseUrl.resolve("/foo/bar/").toString())

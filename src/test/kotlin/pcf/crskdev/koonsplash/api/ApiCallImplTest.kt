@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
@@ -42,7 +44,15 @@ import java.util.concurrent.TimeUnit
 @ExperimentalCoroutinesApi
 internal class ApiCallImplTest : StringSpecIT({
 
-    val api = ApiImpl(HttpClient.http, "key_123")
+    val api = ApiImpl(HttpClient.http, AuthContext.None("key_123"))
+
+    val authContext = object : AuthContext {
+        override val accessKey: AccessKey
+            get() = "key_123"
+
+        override suspend fun getToken(): AuthToken? =
+            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+    }
 
     "should perform api call" {
         dispatchable = {
@@ -153,8 +163,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 )
             ),
             HttpClient.http,
-            "key_123",
-            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+            authContext
         )()
 
         with(lastRequest()) {
@@ -181,8 +190,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 )
             ),
             HttpClient.http,
-            "key_123",
-            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+            authContext
         )()
 
         with(lastRequest()) {
@@ -207,8 +215,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 Verb.Delete
             ),
             HttpClient.http,
-            "key_123",
-            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+            authContext
         )()
 
         with(lastRequest()) {

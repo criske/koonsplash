@@ -22,9 +22,12 @@
 package pcf.crskdev.koonsplash.api
 
 import io.kotest.matchers.shouldBe
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
@@ -33,12 +36,15 @@ import pcf.crskdev.koonsplash.util.setBodyFromResource
 
 internal class ApiAuthImplTest : StringSpecIT({
 
+    val context = mockk<AuthContext>(relaxed = true)
+    coEvery { context.getToken() } returns AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
+    every { context.accessKey } returns "key_123"
     val api = ApiAuthImpl(
         mockk(),
         HttpClient.http,
-        "key_123",
-        AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
+        context
     )
+
     "should call me" {
         dispatchable = {
             when (path ?: "/") {
@@ -51,7 +57,7 @@ internal class ApiAuthImplTest : StringSpecIT({
             }
         }
 
-        val me = api.me()()
+        val me = api.me()
 
         me["id"]<String>() shouldBe "fakeid"
         me["username"]<String>() shouldBe "foo"

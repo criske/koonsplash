@@ -22,60 +22,25 @@
 package pcf.crskdev.koonsplash.internal
 
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.api.ApiAuthImpl
-import pcf.crskdev.koonsplash.api.ApiCall
-import pcf.crskdev.koonsplash.api.Verb
-import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthToken
-import pcf.crskdev.koonsplash.auth.AuthTokenStorage
-import pcf.crskdev.koonsplash.auth.SignedOutException
-import java.util.concurrent.atomic.AtomicReference
+import pcf.crskdev.koonsplash.auth.ClearableAuthContext
 
 /**
  * Koonsplash auth implementation.
  */
 internal class KoonsplashAuthImpl(
-    private val authToken: AuthToken,
-    private val accessKey: AccessKey,
     private val public: Koonsplash,
-    private val storage: AuthTokenStorage,
+    private val authContext: ClearableAuthContext,
     private val httpClient: OkHttpClient,
 ) : Koonsplash.Auth {
 
-    /**
-     * Real api.
-     */
-    private val realApi = ApiAuthImpl(public.api, httpClient, accessKey, authToken)
-
-    /**
-     * Keeps reference of the current api (real or signed out)
-     */
-    private val apiAuthRef: AtomicReference<ApiAuth> = AtomicReference(realApi)
-
-    override val api: ApiAuth get() = apiAuthRef.get()
+    override val api: ApiAuth get() = ApiAuthImpl(public.api, httpClient, authContext)
 
     override suspend fun signOut(): Koonsplash = coroutineScope {
-        launch { storage.clear() }
-        // switch to signed out api to prevent calls to real api.
-        apiAuthRef.compareAndSet(realApi, ApiAuthSignedOut)
+        authContext.clear()
         public
-    }
-
-    /**
-     * Api auth signed out.
-     *
-     */
-    private object ApiAuthSignedOut : ApiAuth {
-        override suspend fun me(verb: Verb): ApiCall {
-            throw SignedOutException
-        }
-
-        override fun call(endpoint: String, verb: Verb): ApiCall {
-            throw SignedOutException
-        }
     }
 }
