@@ -27,6 +27,7 @@ import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.withJSONHeader
 
+@ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 internal class AuthorizerImplTest : StringSpecIT({
 
@@ -53,7 +54,7 @@ internal class AuthorizerImplTest : StringSpecIT({
         }
 
         val codeServer = MockAuthCodeServer()
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), codeServer)
+        val authorizer = AuthorizerImpl(AuthApiCallImpl()) { _, _ -> codeServer }
 
         val token = authorizer.authorize(
             "123",

@@ -29,6 +29,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import pcf.crskdev.koonsplash.Koonsplash
 
+@ExperimentalUnsignedTypes
 internal class SingletonTest : StringSpec({
 
     afterTest {
@@ -41,7 +42,7 @@ internal class SingletonTest : StringSpec({
         val singleton = KoonsplashSingleton(koonsplash)
 
         coEvery { auth.signOut() } returns koonsplash
-        coEvery { koonsplash.authenticated(any(), any(), any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), 3000u, any()) } returns auth
 
         KoonsplashSingleton.instance.shouldBeInstanceOf<Koonsplash>()
 
@@ -59,7 +60,7 @@ internal class SingletonTest : StringSpec({
     "should throw if trying to authenticate twice without sign out" {
         val koonsplash = mockk<Koonsplash>(relaxed = true)
         val auth = mockk<Koonsplash.Auth>(relaxed = true)
-        coEvery { koonsplash.authenticated(any(), any(), any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), 3000u, any()) } returns auth
 
         val singleton = KoonsplashSingleton(koonsplash)
         singleton.authenticated(browserLauncher = mockk())

@@ -44,6 +44,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
+@ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashImpl(
     private val secretKey: SecretKey,
@@ -54,12 +55,19 @@ class KoonsplashImpl(
 
     override val api: Api = ApiImpl(httpClient, AuthContext.None(this.authContext.accessKey))
 
-    override suspend fun authenticated(scopes: AuthScope, port: Int, browserLauncher: (URI) -> Unit): Koonsplash.Auth {
+    override suspend fun authenticated(
+        scopes: AuthScope,
+        host: String,
+        port: UInt,
+        browserLauncher: (URI) -> Unit
+    ): Koonsplash.Auth {
         if (!this.authContext.hasToken()) {
             val newAuthToken = authorizer.authorize(
                 this.authContext.accessKey,
                 this.secretKey,
                 scopes,
+                host,
+                port,
                 browserLauncher
             )
             this.authContext.reset(newAuthToken)

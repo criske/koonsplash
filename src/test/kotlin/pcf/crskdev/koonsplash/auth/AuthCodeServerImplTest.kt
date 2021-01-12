@@ -21,6 +21,7 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,7 +32,10 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
+import java.lang.IllegalStateException
+import java.net.URI
 
+@ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 internal class AuthCodeServerImplTest : StringSpec({
 
@@ -59,5 +63,36 @@ internal class AuthCodeServerImplTest : StringSpec({
         }
 
         code shouldBe "123"
+    }
+
+    "should have a default port assigned" {
+        val server = AuthCodeServerImpl(URI.create("http://localhost/"))
+        server.startServing()
+        server.callbackUri shouldBe URI.create("http://localhost:3000/")
+        server.listeningPort shouldBe 3000
+        server.stopServing()
+    }
+
+    "should override port from url with the one from parameters" {
+        val server = AuthCodeServerImpl(URI.create("http://localhost:3000/"), 3001u)
+        server.startServing()
+        server.callbackUri shouldBe URI.create("http://localhost:3001/")
+        server.listeningPort shouldBe 3001
+        server.stopServing()
+    }
+
+    "should throw if callback is invalid" {
+        val server = AuthCodeServerImpl(URI.create("/"), 3001u)
+        shouldThrow<IllegalStateException> {
+            server.callbackUri
+        }
+    }
+
+    "should have a default URI" {
+        val server = AuthCodeServerImpl()
+        server.startServing()
+        server.callbackUri shouldBe URI.create("http://localhost:3000/")
+        server.listeningPort shouldBe 3000
+        server.stopServing()
     }
 })
