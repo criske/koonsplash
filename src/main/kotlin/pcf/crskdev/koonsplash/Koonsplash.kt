@@ -27,6 +27,7 @@ import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthApiCallImpl
+import pcf.crskdev.koonsplash.auth.AuthCodeServer
 import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
@@ -43,6 +44,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
+@ExperimentalUnsignedTypes
 interface Koonsplash : KoonsplashEntry {
 
     /**
@@ -55,11 +57,18 @@ interface Koonsplash : KoonsplashEntry {
      *
      * @param scopes Scopes
      * @param port Port that code server will listen.
+     * @param host: AuthCode server host
+     * @param port: AuthCode server port
      * @param browserLauncher Browser launcher.
      * @receiver contains URI to launch the OS browser.
      * @return Authenticated session.
      */
-    suspend fun authenticated(scopes: AuthScope = AuthScope.ALL, port: Int = 3000, browserLauncher: (URI) -> Unit): Auth
+    suspend fun authenticated(
+        scopes: AuthScope = AuthScope.ALL,
+        host: String = AuthCodeServer.DEFAULT_HOST,
+        port: UInt = AuthCodeServer.DEFAULT_PORT,
+        browserLauncher: (URI) -> Unit
+    ): Auth
 
     /**
      * Koonsplash entry point for authenticated requests.
@@ -99,6 +108,7 @@ interface KoonsplashEntry
  * @property keysLoader ApiKeysLoader
  * @property storage AuthTokenStorage
  */
+@ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashBuilder internal constructor(
     private val keysLoader: ApiKeysLoader,
@@ -121,7 +131,9 @@ class KoonsplashBuilder internal constructor(
     }
 
     fun build(): Koonsplash {
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), AuthCodeServerImpl())
+        val authorizer = AuthorizerImpl(AuthApiCallImpl()) { host, port ->
+            AuthCodeServerImpl(AuthCodeServer.createCallback(host, port))
+        }
         val authContext = CachedAuthContext(this.storage, this.keysLoader.accessKey)
         return KoonsplashSingleton(
             KoonsplashImpl(

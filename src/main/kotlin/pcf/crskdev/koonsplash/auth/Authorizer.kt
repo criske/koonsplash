@@ -29,6 +29,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
+@ExperimentalUnsignedTypes
 interface Authorizer {
 
     /**
@@ -38,7 +39,8 @@ interface Authorizer {
      * @param accessKey Access key (Client id).
      * @param secretKey Secret key.
      * @param scopes Scopes
-     * @param server AuthCodeServer
+     * @param host Host
+     * @param port Int
      * @param browserLauncher Lambda that launches the os browser app.
      * @receiver
      * @return AuthToken
@@ -47,6 +49,8 @@ interface Authorizer {
         accessKey: AccessKey,
         secretKey: SecretKey,
         scopes: AuthScope,
+        host: String = AuthCodeServer.DEFAULT_HOST,
+        port: UInt = AuthCodeServer.DEFAULT_PORT,
         browserLauncher: (URI) -> Unit
     ): AuthToken
 }

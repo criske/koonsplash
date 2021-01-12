@@ -22,6 +22,8 @@
 package pcf.crskdev.koonsplash.auth
 
 import fi.iki.elonen.NanoHTTPD
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import pcf.crskdev.koonsplash.auth.AuthCodeServer.Companion.DEFAULT_PORT
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.net.URI
@@ -33,11 +35,39 @@ import java.util.concurrent.TimeUnit
  * @author Cristian Pela
  * @since 0.1
  */
-internal class AuthCodeServerImpl(override val callbackUri: URI = URI.create("http://localhost:3000")) :
-    NanoHTTPD(callbackUri.host, callbackUri.port), AuthCodeServer {
+@ExperimentalUnsignedTypes
+internal class AuthCodeServerImpl(
+    private val callback: URI = AuthCodeServer.createCallback(
+        AuthCodeServer.DEFAULT_HOST,
+        AuthCodeServer.DEFAULT_PORT
+    ),
+    private val port: UInt? = null
+) :
+    NanoHTTPD(
+        callback.host,
+        port?.toInt() ?: callback.port.takeIf { it > 0 } ?: DEFAULT_PORT.toInt()
+    ),
+    AuthCodeServer {
 
     @Volatile
     private var onAuthorizeCode: (AuthorizationCode) -> Unit = {}
+
+    override val callbackUri: URI
+        get() {
+            val uriWithPort: (UInt) -> URI = {
+                this.callback.toHttpUrlOrNull()
+                    ?.newBuilder()
+                    ?.port(it.toInt())
+                    ?.build()
+                    ?.toUri()
+                    ?: throw IllegalStateException("Invalid auth code server callback")
+            }
+            return when {
+                callback.port < 0 -> uriWithPort(DEFAULT_PORT)
+                this.port != null -> uriWithPort(this.port)
+                else -> this.callback
+            }
+        }
 
     override fun serve(session: IHTTPSession): Response {
         val code = session.parms["code"]!!

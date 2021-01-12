@@ -21,6 +21,7 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import okhttp3.HttpUrl
 import java.net.URI
 
 /**
@@ -30,6 +31,30 @@ import java.net.URI
  * @since 0.1
  */
 interface AuthCodeServer {
+
+    companion object {
+
+        /**
+         * Default port.
+         */
+        const val DEFAULT_PORT = 3000u
+
+        /**
+         * Default host
+         */
+        const val DEFAULT_HOST = "localhost"
+
+        /**
+         * Callback builder
+         *
+         * @param host Host.
+         * @param port Port.
+         * @return URI
+         */
+        @ExperimentalUnsignedTypes
+        fun createCallback(host: String, port: UInt): URI =
+            HttpUrl.Builder().scheme("http").host(host).port(port.toInt()).build().toUri()
+    }
 
     /**
      * Callback uri

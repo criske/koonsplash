@@ -33,9 +33,10 @@ import java.net.URI
  * Authorizer implementation for authenticated API requests.
  * @property apiCall Auth Api call for token.
  **/
+@ExperimentalUnsignedTypes
 internal class AuthorizerImpl(
     private val apiCall: AuthApiCall,
-    private val server: AuthCodeServer,
+    private val serverFactory: (String, UInt) -> AuthCodeServer,
 ) : Authorizer {
 
     @ExperimentalCoroutinesApi
@@ -43,8 +44,12 @@ internal class AuthorizerImpl(
         accessKey: AccessKey,
         secretKey: SecretKey,
         scopes: AuthScope,
+        host: String,
+        port: UInt,
         browserLauncher: (URI) -> Unit
     ): AuthToken = coroutineScope {
+        val server = serverFactory(host, port)
+
         val channel = produce(coroutineContext) {
             if (!server.startServing()) {
                 throw IllegalStateException("Auth code server hasn't started")

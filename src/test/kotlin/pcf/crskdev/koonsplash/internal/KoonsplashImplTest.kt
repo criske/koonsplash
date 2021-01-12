@@ -38,6 +38,7 @@ import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.net.URI
 
+@ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 internal class KoonsplashImplTest : StringSpec({
 
@@ -79,6 +80,8 @@ internal class KoonsplashImplTest : StringSpec({
                 accessKey: AccessKey,
                 secretKey: SecretKey,
                 scopes: AuthScope,
+                host: String,
+                port: UInt,
                 browserLauncher: (URI) -> Unit
             ): AuthToken {
                 return authToken
@@ -105,6 +108,8 @@ internal class KoonsplashImplTest : StringSpec({
                 accessKey: AccessKey,
                 secretKey: SecretKey,
                 scopes: AuthScope,
+                host: String,
+                port: UInt,
                 browserLauncher: (URI) -> Unit
             ): AuthToken {
                 throw IllegalStateException("Failed to authorize")

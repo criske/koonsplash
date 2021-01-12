@@ -32,6 +32,7 @@ import java.net.URI
  * @property delegate
  * @constructor Create empty Singleton
  */
+@ExperimentalUnsignedTypes
 class KoonsplashSingleton internal constructor(private val delegate: Koonsplash) : Koonsplash by delegate {
 
     companion object {
@@ -53,13 +54,18 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
         instanceInternal = this
     }
 
-    override suspend fun authenticated(scopes: AuthScope, port: Int, browserLauncher: (URI) -> Unit): Koonsplash.Auth {
+    override suspend fun authenticated(
+        scopes: AuthScope,
+        host: String,
+        port: UInt,
+        browserLauncher: (URI) -> Unit
+    ): Koonsplash.Auth {
 
         if (instanceInternal is Koonsplash.Auth) {
             throw IllegalStateException("Already authenticated. Sign out first")
         }
 
-        return KoonsplashSingleton.Auth(delegate.authenticated(scopes, port, browserLauncher)).apply {
+        return KoonsplashSingleton.Auth(delegate.authenticated(scopes, host, port, browserLauncher)).apply {
             instanceInternal = this
         }
     }
