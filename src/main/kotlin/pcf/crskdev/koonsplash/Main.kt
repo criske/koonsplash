@@ -9,12 +9,9 @@ import pcf.crskdev.koonsplash.api.Link
 import pcf.crskdev.koonsplash.api.download
 import pcf.crskdev.koonsplash.api.resize.ResizeDSL.Scope.Fm
 import pcf.crskdev.koonsplash.api.resize.safeCrop
-import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
-import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.awt.Desktop
 import java.io.File
@@ -43,16 +40,13 @@ fun main() {
         override fun clear() {}
     }
 
-    val keysLoader = object : ApiKeysLoader {
-        override val accessKey: AccessKey = System.getenv("access_key")
-        override val secretKey: SecretKey = System.getenv("secret_key")
-    }
-
     val scope = CoroutineScope(EmptyCoroutineContext)
     runBlocking {
-        val api = Koonsplash.builder(keysLoader, storage)
+        val api = Koonsplash.builder(System.getenv("access_key"))
+            .authTokenStorage(storage)
             .build()
             .authenticated(
+                System.getenv("secret_key").toCharArray(),
                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
             ) {
                 Desktop.getDesktop().browse(it)

@@ -30,7 +30,7 @@ package pcf.crskdev.koonsplash.auth
 
 typealias AccessKey = String
 typealias AuthorizationCode = String
-typealias SecretKey = String
+typealias SecretKey = CharArray
 
 /**
  * Thrown when trying to do authenticated calls when after signed out.

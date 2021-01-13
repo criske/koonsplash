@@ -34,6 +34,7 @@ import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SignedOutException
 import pcf.crskdev.koonsplash.http.HttpClient
 
+@ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 internal class KoonsplashAuthImplTest : StringSpec({
 

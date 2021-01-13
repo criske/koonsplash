@@ -26,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthApiCallImpl
 import pcf.crskdev.koonsplash.auth.AuthCodeServer
 import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
@@ -34,6 +33,7 @@ import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.CachedAuthContext
+import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
@@ -56,6 +56,7 @@ interface Koonsplash : KoonsplashEntry {
     /**
      * Authenticated session.
      *
+     * @param secretKey Secret key.
      * @param scopes Scopes
      * @param port Port that code server will listen.
      * @param host: AuthCode server host
@@ -65,6 +66,7 @@ interface Koonsplash : KoonsplashEntry {
      * @return Authenticated session.
      */
     suspend fun authenticated(
+        secretKey: SecretKey,
         scopes: AuthScope = AuthScope.ALL,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
@@ -118,8 +120,10 @@ class KoonsplashBuilder internal constructor(
      */
     private var dispatcher = Dispatchers.IO
 
-
-    //private var authTokenStorage: AuthTokenStorage =
+    /**
+     * Default auth token storage.
+     */
+    private var authTokenStorage: AuthTokenStorage = AuthTokenStorage.None
 
     /**
      * Dispatcher.
@@ -132,17 +136,17 @@ class KoonsplashBuilder internal constructor(
     }
 
     fun authTokenStorage(authTokenStorage: AuthTokenStorage): KoonsplashBuilder {
-
+        this.authTokenStorage = authTokenStorage
+        return this
     }
 
     fun build(): Koonsplash {
         val authorizer = AuthorizerImpl(AuthApiCallImpl()) { host, port ->
             AuthCodeServerImpl(AuthCodeServer.createCallback(host, port))
         }
-        val authContext = CachedAuthContext(this.storage, this.keysLoader.accessKey)
+        val authContext = CachedAuthContext(this.authTokenStorage, this.accessKey)
         return KoonsplashSingleton(
             KoonsplashImpl(
-                this.keysLoader.secretKey,
                 authContext,
                 HttpClient.http,
                 authorizer

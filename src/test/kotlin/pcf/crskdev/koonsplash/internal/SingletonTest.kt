@@ -42,11 +42,11 @@ internal class SingletonTest : StringSpec({
         val singleton = KoonsplashSingleton(koonsplash)
 
         coEvery { auth.signOut() } returns koonsplash
-        coEvery { koonsplash.authenticated(any(), any(), 3000u, any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), any(), 3000u, any()) } returns auth
 
         KoonsplashSingleton.instance.shouldBeInstanceOf<Koonsplash>()
 
-        val singleAuth = singleton.authenticated(browserLauncher = mockk())
+        val singleAuth = singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
 
         singleAuth.shouldBeInstanceOf<Koonsplash.Auth>()
         singleAuth shouldBeSameInstanceAs KoonsplashSingleton.instance
@@ -60,12 +60,12 @@ internal class SingletonTest : StringSpec({
     "should throw if trying to authenticate twice without sign out" {
         val koonsplash = mockk<Koonsplash>(relaxed = true)
         val auth = mockk<Koonsplash.Auth>(relaxed = true)
-        coEvery { koonsplash.authenticated(any(), any(), 3000u, any()) } returns auth
+        coEvery { koonsplash.authenticated(any(), any(), any(), 3000u, any()) } returns auth
 
         val singleton = KoonsplashSingleton(koonsplash)
-        singleton.authenticated(browserLauncher = mockk())
+        singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
         shouldThrow<IllegalStateException> {
-            singleton.authenticated(browserLauncher = mockk())
+            singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
         }
     }
 

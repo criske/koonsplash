@@ -24,6 +24,7 @@ package pcf.crskdev.koonsplash.internal
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.KoonsplashEntry
 import pcf.crskdev.koonsplash.auth.AuthScope
+import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
 
 /**
@@ -55,6 +56,7 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
     }
 
     override suspend fun authenticated(
+        secretKey: SecretKey,
         scopes: AuthScope,
         host: String,
         port: UInt,
@@ -65,7 +67,7 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
             throw IllegalStateException("Already authenticated. Sign out first")
         }
 
-        return KoonsplashSingleton.Auth(delegate.authenticated(scopes, host, port, browserLauncher)).apply {
+        return KoonsplashSingleton.Auth(delegate.authenticated(secretKey, scopes, host, port, browserLauncher)).apply {
             instanceInternal = this
         }
     }
