@@ -21,11 +21,13 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.withJSONHeader
+import java.net.URI
 
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
@@ -54,7 +56,13 @@ internal class AuthorizerImplTest : StringSpecIT({
         }
 
         val codeServer = MockAuthCodeServer()
-        val authorizer = AuthorizerImpl(AuthApiCallImpl()) { _, _ -> codeServer }
+        val browserLauncher = object : BrowserLauncher {
+            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+                externalLauncher?.invoke(url)
+                return Result.success(Unit)
+            }
+        }
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
 
         val token = authorizer.authorize(
             "123",
@@ -71,5 +79,24 @@ internal class AuthorizerImplTest : StringSpecIT({
             AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS,
             1436544465
         )
+    }
+
+    "should fail launching the browser" {
+
+        val codeServer = MockAuthCodeServer()
+        val browserLauncher = object : BrowserLauncher {
+            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+                return Result.failure(IllegalStateException("Failed to launch"))
+            }
+        }
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
+
+        shouldThrow<IllegalStateException> {
+            authorizer.authorize(
+                "123",
+                "123".toCharArray(),
+                AuthScope.PUBLIC
+            )
+        }
     }
 })

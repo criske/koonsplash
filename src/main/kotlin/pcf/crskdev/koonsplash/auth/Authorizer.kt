@@ -41,7 +41,8 @@ interface Authorizer {
      * @param scopes Scopes
      * @param host Host
      * @param port Int
-     * @param browserLauncher Lambda that launches the os browser app.
+     * @param externalBrowserLauncher Lambda that launches the os browser app.
+     * It should be used mainly on android. If null it will use the internal browser launcher.
      * @receiver
      * @return AuthToken
      */
@@ -51,6 +52,6 @@ interface Authorizer {
         scopes: AuthScope,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
-        browserLauncher: (URI) -> Unit
+        externalBrowserLauncher: ((URI) -> Unit)? = null
     ): AuthToken
 }
