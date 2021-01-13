@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020. Pela Cristian
+ *  Copyright (c) 2021. Pela Cristian
  *  Permission is hereby granted, free of charge, to any person obtaining a
  *  copy of this software and associated documentation files (the "Software"),
  *  to deal in the Software without restriction, including without limitation
@@ -21,47 +21,18 @@
 
 package pcf.crskdev.koonsplash.auth
 
-/**
- * Auth token storage
- *
- * @author Cristian Pela
- * @since 0.1
- */
-interface AuthTokenStorage {
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.nulls.shouldBeNull
 
-    /**
-     * Save token.
-     *
-     * @param token
-     */
-    fun save(token: AuthToken)
+internal class AuthTokenStorageTest : StringSpec({
 
-    /**
-     * Load token or null if not found.
-     *
-     * @return AuthToken?
-     */
-    fun load(): AuthToken?
-
-    /**
-     * Removes the token from storage.
-     *
-     */
-    fun clear()
-
-    /**
-     * No storage representation.
-     *
-     * @constructor Create empty None
-     */
-    object None : AuthTokenStorage {
-
-        override fun save(token: AuthToken) {
-        }
-
-        override fun load(): AuthToken? = null
-
-        override fun clear() {
+    "should be have a no storage representation" {
+        with(AuthTokenStorage.None) {
+            load().shouldBeNull()
+            clear()
+            load().shouldBeNull()
+            save(AuthToken("1", "", "", AuthScope.PUBLIC, 0))
+            load().shouldBeNull()
         }
     }
-}
+})
