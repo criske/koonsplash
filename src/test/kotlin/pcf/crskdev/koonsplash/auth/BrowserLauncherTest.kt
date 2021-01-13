@@ -26,6 +26,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import pcf.crskdev.koonsplash.auth.BrowserLauncher.OsFinder
 import java.net.URI
 
 internal class BrowserLauncherTest : StringSpec({
@@ -33,10 +34,10 @@ internal class BrowserLauncherTest : StringSpec({
     val url = URI.create("http://localhost:3000")
 
     "it should launch browser on windows" {
-        val osFinder = mockk<BrowserLauncherImpl.OsFinder>(relaxed = true)
-        val commander = mockk<BrowserLauncherImpl.CommandExecutor>(relaxed = true)
+        val osFinder = mockk<OsFinder>(relaxed = true)
+        val commander = mockk<BrowserLauncher.CommandExecutor>(relaxed = true)
 
-        every { osFinder.os() } returns "windows 10"
+        every { osFinder.os() } returns OsFinder.Os.WINDOWS
 
         val launcher = BrowserLauncherImpl(commander, osFinder)
 
@@ -46,23 +47,10 @@ internal class BrowserLauncherTest : StringSpec({
     }
 
     "it should launch browser on linux nix" {
-        val osFinder = mockk<BrowserLauncherImpl.OsFinder>(relaxed = true)
-        val commander = mockk<BrowserLauncherImpl.CommandExecutor>(relaxed = true)
+        val osFinder = mockk<OsFinder>(relaxed = true)
+        val commander = mockk<BrowserLauncher.CommandExecutor>(relaxed = true)
 
-        every { osFinder.os() } returns "nix"
-
-        val launcher = BrowserLauncherImpl(commander, osFinder)
-
-        launcher.launch(url)
-
-        verify { commander.execute("xdg-open http://localhost:3000") }
-    }
-
-    "it should launch browser on linux nux" {
-        val osFinder = mockk<BrowserLauncherImpl.OsFinder>(relaxed = true)
-        val commander = mockk<BrowserLauncherImpl.CommandExecutor>(relaxed = true)
-
-        every { osFinder.os() } returns "nux"
+        every { osFinder.os() } returns OsFinder.Os.LINUX
 
         val launcher = BrowserLauncherImpl(commander, osFinder)
 
@@ -72,10 +60,10 @@ internal class BrowserLauncherTest : StringSpec({
     }
 
     "it should launch browser on mac" {
-        val osFinder = mockk<BrowserLauncherImpl.OsFinder>(relaxed = true)
-        val commander = mockk<BrowserLauncherImpl.CommandExecutor>(relaxed = true)
+        val osFinder = mockk<OsFinder>(relaxed = true)
+        val commander = mockk<BrowserLauncher.CommandExecutor>(relaxed = true)
 
-        every { osFinder.os() } returns "mac"
+        every { osFinder.os() } returns OsFinder.Os.MAC
 
         val launcher = BrowserLauncherImpl(commander, osFinder)
 
@@ -95,9 +83,9 @@ internal class BrowserLauncherTest : StringSpec({
     }
 
     "it should fail if os is unknown" {
-        val osFinder = mockk<BrowserLauncherImpl.OsFinder>(relaxed = true)
+        val osFinder = mockk<OsFinder>(relaxed = true)
 
-        every { osFinder.os() } returns "foo"
+        every { osFinder.os() } returns OsFinder.Os.UNKNOWN
 
         val launcher = BrowserLauncherImpl(osFinder = osFinder)
 
@@ -105,10 +93,38 @@ internal class BrowserLauncherTest : StringSpec({
     }
 
     "default os finder should find something" {
-        BrowserLauncherImpl.OsFinder.Default.os().isNotBlank() shouldBe true
+
+        val os = System.getProperty("os.name")
+
+        System.setProperty("os.name", "windows")
+        OsFinder.Default.os() shouldBe OsFinder.Os.WINDOWS
+
+        System.setProperty("os.name", "nix")
+        OsFinder.Default.os() shouldBe OsFinder.Os.LINUX
+
+        System.setProperty("os.name", "nux")
+        OsFinder.Default.os() shouldBe OsFinder.Os.LINUX
+
+        System.setProperty("os.name", "mac")
+        OsFinder.Default.os() shouldBe OsFinder.Os.MAC
+
+        System.setProperty("os.name", "temple os")
+        OsFinder.Default.os() shouldBe OsFinder.Os.UNKNOWN
+
+        System.setProperty("os.name", os)
     }
 
     "default command executor can have error" {
-        BrowserLauncherImpl.CommandExecutor.Default.execute("foo").isFailure shouldBe true
+        BrowserLauncher.CommandExecutor.Default.execute("foo").isFailure shouldBe true
+    }
+
+    "default command executor works" {
+        val command = when (OsFinder.Default.os()) {
+            OsFinder.Os.WINDOWS -> arrayOf("cmd.exe", "/c", "dir")
+            OsFinder.Os.LINUX,
+            OsFinder.Os.MAC -> arrayOf("pwd")
+            else -> throw IllegalStateException("Unknown os")
+        }
+        BrowserLauncher.CommandExecutor.Default.execute(*command).isSuccess shouldBe true
     }
 })

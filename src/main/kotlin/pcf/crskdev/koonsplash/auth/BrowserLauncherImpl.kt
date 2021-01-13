@@ -32,7 +32,7 @@ import java.nio.charset.Charset
  * @author Cristian Pela
  * @since 0.1
  */
-interface BrowserLauncher {
+internal interface BrowserLauncher {
 
     /**
      * If `externalLauncher` is null, it will try to launch the url using the OS default browser.
@@ -45,25 +45,52 @@ interface BrowserLauncher {
      * @return Result success if launch was ok
      */
     fun launch(url: URI, externalLauncher: ((URI) -> Unit)? = null): Result<Unit>
-}
 
-/**
- * Desktop url browser launcher impl.
- *
- * @author Cristian Pela
- * @since 0.1
- */
-internal class BrowserLauncherImpl(
-    private val commander: CommandExecutor = CommandExecutor.Default,
-    private val osFinder: OsFinder = OsFinder.Default
-) : BrowserLauncher {
+    /**
+     * Checks the current OS name.
+     *
+     * @constructor Create empty Os finder
+     */
+    interface OsFinder {
+
+        /**
+         * Operating system
+         *
+         */
+        enum class Os {
+            WINDOWS, LINUX, MAC, UNKNOWN
+        }
+
+        /**
+         * Os type.
+         *
+         * @return Os.
+         */
+        fun os(): Os
+
+        /**
+         * Default implementation.
+         *
+         */
+        object Default : OsFinder {
+            override fun os(): Os {
+                val os = System.getProperty("os.name").toLowerCase()
+                return when {
+                    os.contains("mac") -> Os.MAC
+                    os.contains("nix") || os.contains("nux") -> Os.LINUX
+                    os.contains("win") -> Os.WINDOWS
+                    else -> Os.UNKNOWN
+                }
+            }
+        }
+    }
 
     /**
      * Os runtime command executor.
      *
      * @constructor Create empty Command executor
      */
-    internal interface CommandExecutor {
+    interface CommandExecutor {
 
         /**
          * Execute commands.
@@ -73,6 +100,10 @@ internal class BrowserLauncherImpl(
          */
         fun execute(vararg commands: String): Result<Unit>
 
+        /**
+         * Default implementation.
+         *
+         */
         object Default : CommandExecutor {
 
             override fun execute(vararg commands: String): Result<Unit> {
@@ -91,25 +122,18 @@ internal class BrowserLauncherImpl(
             }
         }
     }
+}
 
-    /**
-     * Checks the current OS name.
-     *
-     * @constructor Create empty Os finder
-     */
-    internal interface OsFinder {
-
-        /**
-         * Os name.
-         *
-         * @return String.
-         */
-        fun os(): String
-
-        object Default : OsFinder {
-            override fun os(): String = System.getProperty("os.name").toLowerCase()
-        }
-    }
+/**
+ * Desktop url browser launcher impl.
+ *
+ * @author Cristian Pela
+ * @since 0.1
+ */
+internal class BrowserLauncherImpl(
+    private val commander: BrowserLauncher.CommandExecutor = BrowserLauncher.CommandExecutor.Default,
+    private val osFinder: BrowserLauncher.OsFinder = BrowserLauncher.OsFinder.Default
+) : BrowserLauncher {
 
     override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
         if (externalLauncher != null) {
@@ -117,14 +141,14 @@ internal class BrowserLauncherImpl(
         } else {
             val urlStr = url.toString()
             val os = this.osFinder.os()
-            val commands = when {
-                os.contains("mac") -> arrayOf("open ${urlStr.replace("&", "\\&")}")
-                os.contains("nix") || os.contains("nux") -> arrayOf("xdg-open $urlStr")
-                os.contains("win") -> arrayOf("cmd.exe", "/c", "start ${urlStr.replace("&", "^&")}")
+            val commands = when (os) {
+                BrowserLauncher.OsFinder.Os.MAC -> arrayOf("open ${urlStr.replace("&", "\\&")}")
+                BrowserLauncher.OsFinder.Os.LINUX -> arrayOf("xdg-open $urlStr")
+                BrowserLauncher.OsFinder.Os.WINDOWS -> arrayOf("cmd.exe", "/c", "start ${urlStr.replace("&", "^&")}")
                 else -> emptyArray()
             }
             if (commands.isEmpty()) {
-                return Result.failure(IllegalStateException("Unknown operating system $os"))
+                return Result.failure(IllegalStateException("Can't launch link for operating system $os"))
             }
             return this.commander.execute(*commands)
         }
