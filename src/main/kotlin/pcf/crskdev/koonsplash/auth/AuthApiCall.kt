@@ -70,7 +70,7 @@ internal class AuthApiCallImpl : AuthApiCall {
     ): AuthToken {
         val authTokenForm = FormBody.Builder()
             .add("client_id", accessKey)
-            .add("client_secret", secretKey)
+            .add("client_secret", secretKey.concatToString())
             .add("redirect_uri", redirectUri.toString())
             .add("code", authorizationCode)
             .add("grant_type", "authorization_code")

@@ -23,6 +23,7 @@ package pcf.crskdev.koonsplash.internal
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coVerify
 import io.mockk.every
@@ -44,7 +45,6 @@ internal class KoonsplashImplTest : StringSpec({
 
     "should return api" {
         val koonsplash = KoonsplashImpl(
-            "key_123",
             CachedAuthContext(mockk(relaxed = true), "access_123"),
             HttpClient.http,
             mockk()
@@ -57,7 +57,6 @@ internal class KoonsplashImplTest : StringSpec({
         val storage = mockk<AuthTokenStorage>(relaxed = true)
         val authorizer = mockk<Authorizer>(relaxed = true)
         val koonsplash = KoonsplashImpl(
-            "key_123",
             CachedAuthContext(storage, ""),
             HttpClient.http,
             authorizer
@@ -65,11 +64,13 @@ internal class KoonsplashImplTest : StringSpec({
 
         every { storage.load() } returns AuthToken("token", "", "", AuthScope.ALL, 1)
 
-        val authenticated = koonsplash.authenticated {}
+        val secretKey = "secret".toCharArray()
+        val authenticated = koonsplash.authenticated(secretKey, port = 1u) {}
 
-        // TODO fix this
-        // coVerify (exactly = 0) { authorizer.authorize(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u, any()) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
+        // should be cleared
+        secretKey shouldBe " ".repeat(6).toCharArray()
     }
 
     "should call authorize" {
@@ -89,16 +90,18 @@ internal class KoonsplashImplTest : StringSpec({
         }
         every { storage.load() } returns null
         val koonsplash = KoonsplashImpl(
-            "key_123",
             CachedAuthContext(storage, ""),
             HttpClient.http,
             authorizer
         )
 
-        val authenticated = koonsplash.authenticated {}
+        val secretKey = "secret".toCharArray()
+        val authenticated = koonsplash.authenticated(secretKey) {}
 
         coVerify(exactly = 1) { storage.save(authToken) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
+        // should be cleared
+        secretKey shouldBe " ".repeat(6).toCharArray()
     }
 
     "should throw error authorization fail" {
@@ -117,14 +120,16 @@ internal class KoonsplashImplTest : StringSpec({
         }
         every { storage.load() } returns null
         val koonsplash = KoonsplashImpl(
-            "key_123",
             CachedAuthContext(storage, ""),
             HttpClient.http,
             authorizer
         )
 
+        val secretKey = "secret".toCharArray()
         shouldThrow<IllegalStateException> {
-            koonsplash.authenticated {}
+            koonsplash.authenticated(secretKey) {}
         }
+        // should be cleared
+        secretKey shouldBe " ".repeat(6).toCharArray()
     }
 })

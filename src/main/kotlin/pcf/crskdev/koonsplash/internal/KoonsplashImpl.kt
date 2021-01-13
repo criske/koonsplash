@@ -31,6 +31,7 @@ import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.ClearableAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
+import java.util.Arrays
 
 /**
  *  Koonsplash entry point implementation.
@@ -47,7 +48,6 @@ import java.net.URI
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashImpl(
-    private val secretKey: SecretKey,
     private val authContext: ClearableAuthContext,
     private val httpClient: OkHttpClient,
     private val authorizer: Authorizer
@@ -56,21 +56,26 @@ class KoonsplashImpl(
     override val api: Api = ApiImpl(httpClient, AuthContext.None(this.authContext.accessKey))
 
     override suspend fun authenticated(
+        secretKey: SecretKey,
         scopes: AuthScope,
         host: String,
         port: UInt,
         browserLauncher: (URI) -> Unit
     ): Koonsplash.Auth {
-        if (!this.authContext.hasToken()) {
-            val newAuthToken = authorizer.authorize(
-                this.authContext.accessKey,
-                this.secretKey,
-                scopes,
-                host,
-                port,
-                browserLauncher
-            )
-            this.authContext.reset(newAuthToken)
+        try {
+            if (!this.authContext.hasToken()) {
+                val newAuthToken = authorizer.authorize(
+                    this.authContext.accessKey,
+                    secretKey,
+                    scopes,
+                    host,
+                    port,
+                    browserLauncher
+                )
+                this.authContext.reset(newAuthToken)
+            }
+        } finally {
+            Arrays.fill(secretKey, ' ')
         }
         return KoonsplashAuthImpl(this, this.authContext, httpClient)
     }

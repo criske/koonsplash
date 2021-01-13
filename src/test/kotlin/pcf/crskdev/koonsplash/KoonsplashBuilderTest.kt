@@ -23,20 +23,16 @@ package pcf.crskdev.koonsplash
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
-import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 
+@ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 internal class KoonsplashBuilderTest : StringSpec({
 
     "should build" {
-        val keysLoader = mockk<ApiKeysLoader>(relaxed = true)
-        val storage = mockk<AuthTokenStorage>(relaxed = true)
-        every { keysLoader.accessKey } returns "123"
-        Koonsplash.builder(keysLoader, storage)
+        Koonsplash.builder("123")
+            .authTokenStorage(AuthTokenStorage.None)
             .dispatcher(Dispatchers.Main)
             .build()
             .shouldBeInstanceOf<Koonsplash>()

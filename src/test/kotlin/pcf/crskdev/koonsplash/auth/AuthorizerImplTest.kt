@@ -58,7 +58,7 @@ internal class AuthorizerImplTest : StringSpecIT({
 
         val token = authorizer.authorize(
             "123",
-            "123",
+            "123".toCharArray(),
             AuthScope.PUBLIC
         ) {
             codeServer.enqueueCode("123code")
