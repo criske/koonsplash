@@ -24,6 +24,7 @@ package pcf.crskdev.koonsplash
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.Dispatchers
+import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
@@ -31,6 +32,7 @@ internal class KoonsplashBuilderTest : StringSpec({
 
     "should build" {
         Koonsplash.builder("123")
+            .authTokenStorage(AuthTokenStorage.None)
             .dispatcher(Dispatchers.Main)
             .build()
             .shouldBeInstanceOf<Koonsplash>()
