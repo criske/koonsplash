@@ -103,4 +103,12 @@ internal class BrowserLauncherTest : StringSpec({
 
         launcher.launch(url).isFailure shouldBe true
     }
+
+    "default os finder should find something" {
+        BrowserLauncherImpl.OsFinder.Default.os().isNotBlank() shouldBe true
+    }
+
+    "default command executor can have error" {
+        BrowserLauncherImpl.CommandExecutor.Default.execute("foo").isFailure shouldBe true
+    }
 })

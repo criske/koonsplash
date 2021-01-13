@@ -21,6 +21,7 @@
 
 package pcf.crskdev.koonsplash.auth
 
+import java.io.IOException
 import java.lang.IllegalStateException
 import java.net.URI
 import java.nio.charset.Charset
@@ -75,13 +76,17 @@ internal class BrowserLauncherImpl(
         object Default : CommandExecutor {
 
             override fun execute(vararg commands: String): Result<Unit> {
-                val process: Process = ProcessBuilder(commands.toList()).start()
-                process.waitFor()
-                val error = process.errorStream.use { it.readBytes().toString(Charset.defaultCharset()) }
-                return if (error.isNotBlank()) {
-                    Result.failure(IllegalStateException(error))
-                } else {
-                    Result.success(Unit)
+                return try {
+                    val process: Process = ProcessBuilder(commands.toList()).start()
+                    process.waitFor()
+                    val error = process.errorStream.use { it.readBytes().toString(Charset.defaultCharset()) }
+                    if (error.isNotBlank()) {
+                        Result.failure(IllegalStateException(error))
+                    } else {
+                        Result.success(Unit)
+                    }
+                } catch (ex: IOException) {
+                    Result.failure(ex)
                 }
             }
         }
