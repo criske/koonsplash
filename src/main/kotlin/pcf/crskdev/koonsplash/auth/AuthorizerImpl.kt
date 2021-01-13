@@ -32,11 +32,14 @@ import java.net.URI
 /**
  * Authorizer implementation for authenticated API requests.
  * @property apiCall Auth Api call for token.
+ * @property serverFactory Auth code server provider
+ * @property browserLauncher Browser launcher.
  **/
 @ExperimentalUnsignedTypes
 internal class AuthorizerImpl(
     private val apiCall: AuthApiCall,
-    private val serverFactory: (String, UInt) -> AuthCodeServer,
+    private val browserLauncher: BrowserLauncher,
+    private val serverFactory: (String, UInt) -> AuthCodeServer
 ) : Authorizer {
 
     @ExperimentalCoroutinesApi
@@ -46,7 +49,7 @@ internal class AuthorizerImpl(
         scopes: AuthScope,
         host: String,
         port: UInt,
-        browserLauncher: (URI) -> Unit
+        externalBrowserLauncher: ((URI) -> Unit)?
     ): AuthToken = coroutineScope {
         val server = serverFactory(host, port)
 
@@ -58,7 +61,7 @@ internal class AuthorizerImpl(
                 offer(it)
                 close()
             }
-            val browserUrl = HttpClient.baseUrl.toHttpUrlOrNull()!!
+            val url = HttpClient.baseUrl.toHttpUrlOrNull()!!
                 .newBuilder()
                 .addPathSegment("oauth")
                 .addPathSegment("authorize")
@@ -69,7 +72,11 @@ internal class AuthorizerImpl(
                 .build()
                 .toUrl()
                 .toURI()
-            browserLauncher(browserUrl)
+            browserLauncher
+                .launch(url, externalBrowserLauncher)
+                .onFailure {
+                    close(it)
+                }
             awaitClose {
                 server.stopServing()
             }

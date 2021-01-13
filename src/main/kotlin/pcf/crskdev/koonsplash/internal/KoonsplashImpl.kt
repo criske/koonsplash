@@ -60,7 +60,7 @@ class KoonsplashImpl(
         scopes: AuthScope,
         host: String,
         port: UInt,
-        browserLauncher: (URI) -> Unit
+        browserLauncher: ((URI) -> Unit)?
     ): Koonsplash.Auth {
         try {
             if (!this.authContext.hasToken()) {

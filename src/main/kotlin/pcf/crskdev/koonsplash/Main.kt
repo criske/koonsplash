@@ -13,7 +13,6 @@ import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.http.HttpClient
-import java.awt.Desktop
 import java.io.File
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -48,9 +47,7 @@ fun main() {
             .authenticated(
                 System.getenv("secret_key").toCharArray(),
                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
-            ) {
-                Desktop.getDesktop().browse(it)
-            }
+            )
             .api
         scope.launch {
 

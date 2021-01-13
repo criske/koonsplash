@@ -26,6 +26,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.withJSONHeader
+import java.net.URI
 
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
@@ -54,7 +55,13 @@ internal class AuthorizerImplTest : StringSpecIT({
         }
 
         val codeServer = MockAuthCodeServer()
-        val authorizer = AuthorizerImpl(AuthApiCallImpl()) { _, _ -> codeServer }
+        val browserLauncher = object : BrowserLauncher {
+            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+                externalLauncher?.invoke(url)
+                return Result.success(Unit)
+            }
+        }
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
 
         val token = authorizer.authorize(
             "123",

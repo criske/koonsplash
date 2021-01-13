@@ -60,7 +60,7 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
         scopes: AuthScope,
         host: String,
         port: UInt,
-        browserLauncher: (URI) -> Unit
+        browserLauncher: ((URI) -> Unit)?
     ): Koonsplash.Auth {
 
         if (instanceInternal is Koonsplash.Auth) {

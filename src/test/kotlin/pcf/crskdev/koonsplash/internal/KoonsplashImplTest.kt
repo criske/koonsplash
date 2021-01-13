@@ -83,7 +83,7 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
-                browserLauncher: (URI) -> Unit
+                externalBrowserLauncher: ((URI) -> Unit)?
             ): AuthToken {
                 return authToken
             }
@@ -113,7 +113,7 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
-                browserLauncher: (URI) -> Unit
+                externalBrowserLauncher: ((URI) -> Unit)?
             ): AuthToken {
                 throw IllegalStateException("Failed to authorize")
             }

@@ -32,6 +32,7 @@ import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
+import pcf.crskdev.koonsplash.auth.BrowserLauncherImpl
 import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
@@ -61,7 +62,8 @@ interface Koonsplash : KoonsplashEntry {
      * @param port Port that code server will listen.
      * @param host: AuthCode server host
      * @param port: AuthCode server port
-     * @param browserLauncher Browser launcher.
+     * @param browserLauncher Launches the os browser app.
+     * It should be used mainly on android. If null it will try to use the internal browser launcher.
      * @receiver contains URI to launch the OS browser.
      * @return Authenticated session.
      */
@@ -70,7 +72,7 @@ interface Koonsplash : KoonsplashEntry {
         scopes: AuthScope = AuthScope.ALL,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
-        browserLauncher: (URI) -> Unit
+        browserLauncher: ((URI) -> Unit)? = null
     ): Auth
 
     /**
@@ -141,7 +143,7 @@ class KoonsplashBuilder internal constructor(
     }
 
     fun build(): Koonsplash {
-        val authorizer = AuthorizerImpl(AuthApiCallImpl()) { host, port ->
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), BrowserLauncherImpl()) { host, port ->
             AuthCodeServerImpl(AuthCodeServer.createCallback(host, port))
         }
         val authContext = CachedAuthContext(this.authTokenStorage, this.accessKey)
