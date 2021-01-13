@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
+import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.ApiKeysLoader
 import pcf.crskdev.koonsplash.auth.AuthApiCallImpl
 import pcf.crskdev.koonsplash.auth.AuthCodeServer
@@ -86,12 +87,11 @@ interface Koonsplash : KoonsplashEntry {
         /**
          * Helper to create a new Koonsplash object.
          *
-         * @param keysLoader ApiKeysLoader
-         * @param storage AuthTokenStorage
+         * @param accessKey Access Key (client id)
          * @return Koonsplash
          */
-        fun builder(keysLoader: ApiKeysLoader, storage: AuthTokenStorage): KoonsplashBuilder =
-            KoonsplashBuilder(keysLoader, storage)
+        fun builder(accessKey: AccessKey): KoonsplashBuilder =
+            KoonsplashBuilder(accessKey)
     }
 }
 
@@ -105,20 +105,21 @@ interface KoonsplashEntry
 /**
  * Koonsplash builder.
  *
- * @property keysLoader ApiKeysLoader
- * @property storage AuthTokenStorage
+ * @property accessKey: AccessKey(client id)
  */
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashBuilder internal constructor(
-    private val keysLoader: ApiKeysLoader,
-    private val storage: AuthTokenStorage
+    private val accessKey: AccessKey,
 ) {
 
     /**
      * Default Dispatcher
      */
     private var dispatcher = Dispatchers.IO
+
+
+    //private var authTokenStorage: AuthTokenStorage =
 
     /**
      * Dispatcher.
@@ -128,6 +129,10 @@ class KoonsplashBuilder internal constructor(
     fun dispatcher(dispatcher: CoroutineDispatcher): KoonsplashBuilder {
         this.dispatcher = dispatcher
         return this
+    }
+
+    fun authTokenStorage(authTokenStorage: AuthTokenStorage): KoonsplashBuilder {
+
     }
 
     fun build(): Koonsplash {
