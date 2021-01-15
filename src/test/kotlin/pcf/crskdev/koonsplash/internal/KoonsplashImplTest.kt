@@ -28,6 +28,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthScope
@@ -38,7 +39,11 @@ import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.net.URI
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
 
+@ExperimentalCoroutinesApi
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 internal class KoonsplashImplTest : StringSpec({
@@ -67,7 +72,7 @@ internal class KoonsplashImplTest : StringSpec({
         val secretKey = "secret".toCharArray()
         val authenticated = koonsplash.authenticated(secretKey, port = 1u) {}
 
-        coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u, any()) }
+        coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u, externalBrowserLauncher = any()) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
         // should be cleared
         secretKey shouldBe " ".repeat(6).toCharArray()
@@ -83,6 +88,7 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
+                timeout: Duration,
                 externalBrowserLauncher: ((URI) -> Unit)?
             ): AuthToken {
                 return authToken
@@ -113,6 +119,7 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
+                timeout: Duration,
                 externalBrowserLauncher: ((URI) -> Unit)?
             ): AuthToken {
                 throw IllegalStateException("Failed to authorize")

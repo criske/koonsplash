@@ -22,6 +22,10 @@
 package pcf.crskdev.koonsplash.auth
 
 import java.net.URI
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.toDuration
 
 /**
  * Authorizer for authenticated API requests.
@@ -29,6 +33,7 @@ import java.net.URI
  * @author Cristian Pela
  * @since 0.1
  */
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 interface Authorizer {
 
@@ -38,9 +43,10 @@ interface Authorizer {
      *
      * @param accessKey Access key (Client id).
      * @param secretKey Secret key.
-     * @param scopes Scopes
-     * @param host Host
-     * @param port Int
+     * @param scopes Scopes.
+     * @param host Host.
+     * @param port Int.
+     * @param timeout Amount of time within the authorization must execute. Default 5 minutes.
      * @param externalBrowserLauncher Lambda that launches the os browser app.
      * It should be used mainly on android. If null it will use the internal browser launcher.
      * @receiver
@@ -52,6 +58,7 @@ interface Authorizer {
         scopes: AuthScope,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
+        timeout: Duration = 5.toDuration(DurationUnit.MINUTES),
         externalBrowserLauncher: ((URI) -> Unit)? = null
     ): AuthToken
 }

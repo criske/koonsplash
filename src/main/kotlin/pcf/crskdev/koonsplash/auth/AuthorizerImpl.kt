@@ -25,9 +25,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.net.URI
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
 
 /**
  * Authorizer implementation for authenticated API requests.
@@ -35,6 +38,7 @@ import java.net.URI
  * @property serverFactory Auth code server provider
  * @property browserLauncher Browser launcher.
  **/
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 internal class AuthorizerImpl(
     private val apiCall: AuthApiCall,
@@ -49,6 +53,7 @@ internal class AuthorizerImpl(
         scopes: AuthScope,
         host: String,
         port: UInt,
+        timeout: Duration,
         externalBrowserLauncher: ((URI) -> Unit)?
     ): AuthToken = coroutineScope {
         val server = serverFactory(host, port)
@@ -74,15 +79,13 @@ internal class AuthorizerImpl(
                 .toURI()
             browserLauncher
                 .launch(url, externalBrowserLauncher)
-                .onFailure {
-                    close(it)
-                }
+                .onFailure { close(it) }
             awaitClose {
                 server.stopServing()
             }
         }
 
-        val authorizationCode = channel.receive()
+        val authorizationCode = withTimeout(timeout) { channel.receive() }
 
         apiCall.token(authorizationCode, accessKey, secretKey, server.callbackUri)
     }
