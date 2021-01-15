@@ -29,6 +29,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AccessKey
 import pcf.crskdev.koonsplash.auth.AuthScope
@@ -70,7 +71,7 @@ internal class KoonsplashImplTest : StringSpec({
         every { storage.load() } returns AuthToken("token", "", "", AuthScope.ALL, 1)
 
         val secretKey = "secret".toCharArray()
-        val authenticated = koonsplash.authenticated(secretKey, port = 1u) {}
+        val authenticated = koonsplash.authenticated(Koonsplash.AuthenticatedBuilder(secretKey).port(1u))
 
         coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u, externalBrowserLauncher = any()) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
@@ -102,7 +103,7 @@ internal class KoonsplashImplTest : StringSpec({
         )
 
         val secretKey = "secret".toCharArray()
-        val authenticated = koonsplash.authenticated(secretKey) {}
+        val authenticated = koonsplash.authenticated(Koonsplash.AuthenticatedBuilder(secretKey))
 
         coVerify(exactly = 1) { storage.save(authToken) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
@@ -134,7 +135,7 @@ internal class KoonsplashImplTest : StringSpec({
 
         val secretKey = "secret".toCharArray()
         shouldThrow<IllegalStateException> {
-            koonsplash.authenticated(secretKey) {}
+            koonsplash.authenticated(Koonsplash.AuthenticatedBuilder(secretKey))
         }
         // should be cleared
         secretKey shouldBe " ".repeat(6).toCharArray()

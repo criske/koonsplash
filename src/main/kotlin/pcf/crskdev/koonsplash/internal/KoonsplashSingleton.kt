@@ -23,10 +23,6 @@ package pcf.crskdev.koonsplash.internal
 
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.KoonsplashEntry
-import pcf.crskdev.koonsplash.auth.AuthScope
-import pcf.crskdev.koonsplash.auth.SecretKey
-import java.net.URI
-import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
 /**
@@ -58,29 +54,13 @@ class KoonsplashSingleton internal constructor(private val delegate: Koonsplash)
     }
 
     @ExperimentalTime
-    override suspend fun authenticated(
-        secretKey: SecretKey,
-        scopes: AuthScope,
-        host: String,
-        port: UInt,
-        timeout: Duration,
-        browserLauncher: ((URI) -> Unit)?
-    ): Koonsplash.Auth {
+    override suspend fun authenticated(builder: Koonsplash.AuthenticatedBuilder): Koonsplash.Auth {
 
         if (instanceInternal is Koonsplash.Auth) {
             throw IllegalStateException("Already authenticated. Sign out first")
         }
 
-        return KoonsplashSingleton.Auth(
-            delegate.authenticated(
-                secretKey,
-                scopes,
-                host,
-                port,
-                timeout,
-                browserLauncher
-            )
-        ).apply { instanceInternal = this }
+        return KoonsplashSingleton.Auth(delegate.authenticated(builder)).apply { instanceInternal = this }
     }
 
     class Auth(private val delegate: Koonsplash.Auth) : Koonsplash.Auth by delegate {
