@@ -24,11 +24,18 @@ package pcf.crskdev.koonsplash.auth
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.test.runBlockingTest
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.withJSONHeader
 import java.net.URI
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.toDuration
 
+@ExperimentalStdlibApi
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 internal class AuthorizerImplTest : StringSpecIT({
@@ -67,7 +74,7 @@ internal class AuthorizerImplTest : StringSpecIT({
         val token = authorizer.authorize(
             "123",
             "123".toCharArray(),
-            AuthScope.PUBLIC
+            AuthScope.PUBLIC,
         ) {
             codeServer.enqueueCode("123code")
         }
@@ -95,8 +102,33 @@ internal class AuthorizerImplTest : StringSpecIT({
             authorizer.authorize(
                 "123",
                 "123".toCharArray(),
-                AuthScope.PUBLIC
+                AuthScope.PUBLIC,
             )
+        }
+    }
+
+    "should time out" {
+        val codeServer = MockAuthCodeServer()
+        val browserLauncher = object : BrowserLauncher {
+            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+                return Result.success(Unit)
+            }
+        }
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
+
+        shouldThrow<TimeoutCancellationException> {
+            runBlockingTest {
+                pauseDispatcher {
+                    authorizer.authorize(
+                        "123",
+                        "123".toCharArray(),
+                        AuthScope.PUBLIC,
+                        timeout = 1.toDuration(DurationUnit.MINUTES)
+                    )
+                    advanceTimeBy(2.toDuration(DurationUnit.MINUTES).toLongMilliseconds())
+                    runCurrent()
+                }
+            }
         }
     }
 })

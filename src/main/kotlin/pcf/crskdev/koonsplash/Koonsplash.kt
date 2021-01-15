@@ -39,6 +39,10 @@ import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
 import java.net.URI
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.toDuration
 
 /**
  * Koonsplash entry point.
@@ -62,16 +66,19 @@ interface Koonsplash : KoonsplashEntry {
      * @param port Port that code server will listen.
      * @param host: AuthCode server host
      * @param port: AuthCode server port
+     * @param timeout Amount of time within the authorization must execute. Default 5 minutes.
      * @param browserLauncher Launches the os browser app.
      * It should be used mainly on android. If null it will try to use the internal browser launcher.
      * @receiver contains URI to launch the OS browser.
      * @return Authenticated session.
      */
+    @ExperimentalTime
     suspend fun authenticated(
         secretKey: SecretKey,
         scopes: AuthScope = AuthScope.ALL,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
+        timeout: Duration = 5.toDuration(TimeUnit.MINUTES),
         browserLauncher: ((URI) -> Unit)? = null
     ): Auth
 
@@ -86,6 +93,7 @@ interface Koonsplash : KoonsplashEntry {
         suspend fun signOut(): Koonsplash
     }
 
+    @ExperimentalTime
     @ExperimentalStdlibApi
     companion object {
         /**
@@ -111,6 +119,7 @@ interface KoonsplashEntry
  *
  * @property accessKey: AccessKey(client id)
  */
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashBuilder internal constructor(

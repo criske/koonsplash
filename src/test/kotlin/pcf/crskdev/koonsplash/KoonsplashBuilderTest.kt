@@ -25,7 +25,9 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.Dispatchers
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
+import kotlin.time.ExperimentalTime
 
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 internal class KoonsplashBuilderTest : StringSpec({

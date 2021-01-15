@@ -32,19 +32,19 @@ import pcf.crskdev.koonsplash.auth.ClearableAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import java.net.URI
 import java.util.Arrays
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
 
 /**
  *  Koonsplash entry point implementation.
  *
- * @property accessKey AccessKey.
- * @property secretKey SecretKey.
- * @property storage Storage.
  * @property httpClient OkHttpClient.
  * @property authorizer Authorizer.
  * @constructor Create empty Koonsplash impl
  * @author Cristian Pela
  * @since 0.1
  */
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
 class KoonsplashImpl(
@@ -60,6 +60,7 @@ class KoonsplashImpl(
         scopes: AuthScope,
         host: String,
         port: UInt,
+        timeout: Duration,
         browserLauncher: ((URI) -> Unit)?
     ): Koonsplash.Auth {
         try {
@@ -70,6 +71,7 @@ class KoonsplashImpl(
                     scopes,
                     host,
                     port,
+                    timeout,
                     browserLauncher
                 )
                 this.authContext.reset(newAuthToken)

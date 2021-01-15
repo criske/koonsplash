@@ -1,9 +1,7 @@
 package pcf.crskdev.koonsplash
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import pcf.crskdev.koonsplash.api.Link
 import pcf.crskdev.koonsplash.api.download
@@ -14,8 +12,9 @@ import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.http.HttpClient
 import java.io.File
-import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.ExperimentalTime
 
+@ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 @FlowPreview
@@ -39,7 +38,6 @@ fun main() {
         override fun clear() {}
     }
 
-    val scope = CoroutineScope(EmptyCoroutineContext)
     runBlocking {
         val api = Koonsplash.builder(System.getenv("access_key"))
             .authTokenStorage(storage)
@@ -49,13 +47,12 @@ fun main() {
                 AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
             )
             .api
-        scope.launch {
 
-            val me = api.call("/me")()
-            val myLikesLink: Link.Api = me["links"]["likes"]()
-            val firstLikedPhoto = myLikesLink.call()[0]
-            val downloadLink: Link.Download = firstLikedPhoto["links"]["download_location"]()
-            val id: String = firstLikedPhoto["id"]()
+        val me = api.call("/me")()
+        val myLikesLink: Link.Api = me["links"]["likes"]()
+        val firstLikedPhoto = myLikesLink.call()[0]
+        val id: String = firstLikedPhoto["id"]()
+//        val downloadLink: Link.Download = firstLikedPhoto["links"]["download_location"]()
 
 //            downloadLink
 //                .downloadWithProgress(File("C:\\Users\\user\\Desktop"), id)
@@ -67,15 +64,14 @@ fun main() {
 //                        is ApiCall.ProgressStatus.Starting -> println("Starting")
 //                    }
 //                }
-            val rawPhoto: Link.Photo = firstLikedPhoto["urls"]["raw"]()
-            val filter = rawPhoto.resize {
-                fm(Fm.JPG)
-                safeCrop(500u)
-                80u.q
-            }
-            // Desktop.getDesktop().browse(filter.asPhotoLink().url)
-            filter.asDownloadLink().download(File("C:\\Users\\user\\Desktop"), id)
-        }.join()
+        val rawPhoto: Link.Photo = firstLikedPhoto["urls"]["raw"]()
+        val filter = rawPhoto.resize {
+            fm(Fm.JPG)
+            safeCrop(500u)
+            80u.q
+        }
+        // Desktop.getDesktop().browse(filter.asPhotoLink().url)
+        filter.asDownloadLink().download(File("C:\\Users\\user\\Desktop"), id)
     }
 
     HttpClient.http.dispatcher.executorService.shutdown()
