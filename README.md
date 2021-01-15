@@ -11,11 +11,12 @@ runBlocking {
     val api = Koonsplash.builder("my-access-key-client-id")
                 .build()
                 .authenticated(
-                    charArrayOf('s','e','c','r','e','t','-','k','e','y'),
-                    AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
-                ){
-                    Desktop.browse(it) // launching the browser depends on platform
-                }    
+                    Koonsplash.AuthenticatedBuilder(charArrayOf('s','e','c','r','e','t','-','k','e','y'))
+                        .scopes(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER)
+                        .browserLauncher {
+                             Desktop.browse(it)  // launching the browser depends on platform
+                        } 
+                )   
                 .api
     val me = api.call("/me")()
     val myLikesLink: Link.Api = me["links"]["likes"]()

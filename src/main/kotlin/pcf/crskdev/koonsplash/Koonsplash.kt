@@ -50,7 +50,6 @@ import kotlin.time.toDuration
  * @author Cristian Pela
  * @since 0.1
  */
-@ExperimentalUnsignedTypes
 interface Koonsplash : KoonsplashEntry {
 
     /**
@@ -61,26 +60,10 @@ interface Koonsplash : KoonsplashEntry {
     /**
      * Authenticated session.
      *
-     * @param secretKey Secret key.
-     * @param scopes Scopes
-     * @param port Port that code server will listen.
-     * @param host: AuthCode server host
-     * @param port: AuthCode server port
-     * @param timeout Amount of time within the authorization must execute. Default 5 minutes.
-     * @param browserLauncher Launches the os browser app.
-     * It should be used mainly on android. If null it will try to use the internal browser launcher.
-     * @receiver contains URI to launch the OS browser.
+     * @param builder AuthenticatedBuilder.
      * @return Authenticated session.
      */
-    @ExperimentalTime
-    suspend fun authenticated(
-        secretKey: SecretKey,
-        scopes: AuthScope = AuthScope.ALL,
-        host: String = AuthCodeServer.DEFAULT_HOST,
-        port: UInt = AuthCodeServer.DEFAULT_PORT,
-        timeout: Duration = 5.toDuration(TimeUnit.MINUTES),
-        browserLauncher: ((URI) -> Unit)? = null
-    ): Auth
+    suspend fun authenticated(builder: AuthenticatedBuilder): Auth
 
     /**
      * Koonsplash entry point for authenticated requests.
@@ -93,8 +76,6 @@ interface Koonsplash : KoonsplashEntry {
         suspend fun signOut(): Koonsplash
     }
 
-    @ExperimentalTime
-    @ExperimentalStdlibApi
     companion object {
         /**
          * Helper to create a new Koonsplash object.
@@ -102,8 +83,133 @@ interface Koonsplash : KoonsplashEntry {
          * @param accessKey Access Key (client id)
          * @return Koonsplash
          */
+        @ExperimentalUnsignedTypes
+        @ExperimentalTime
+        @ExperimentalStdlibApi
         fun builder(accessKey: AccessKey): KoonsplashBuilder =
             KoonsplashBuilder(accessKey)
+    }
+
+    /**
+     * Authenticated builder
+     *
+     * @property secretKey Secret key.
+     */
+    class AuthenticatedBuilder(internal val secretKey: SecretKey) {
+
+        /**
+         * Scopes.
+         */
+        private var scopes: AuthScope = AuthScope.ALL
+
+        /**
+         * Host.
+         */
+        private var host: String = AuthCodeServer.DEFAULT_HOST
+
+        /**
+         * Port.
+         */
+        @ExperimentalUnsignedTypes
+        private var port: UInt = AuthCodeServer.DEFAULT_PORT
+
+        /**
+         * Timeout.
+         */
+        @ExperimentalTime
+        private var timeout: Duration = 5.toDuration(TimeUnit.MINUTES)
+
+        /**
+         * Browser launcher.
+         */
+        private var browserLauncher: ((URI) -> Unit)? = null
+
+        /**
+         * Scopes.
+         *
+         * @param scopes
+         * @return AuthenticatedBuilder
+         */
+        fun scopes(scopes: AuthScope): AuthenticatedBuilder {
+            this.scopes = scopes
+            return this
+        }
+
+        /**
+         * Host of the authorization code server (should be localhost or a local ip)
+         *
+         * @param host
+         * @return AuthenticatedBuilder
+         */
+        fun host(host: String): AuthenticatedBuilder {
+            this.host = host
+            return this
+        }
+
+        /**
+         * Port that authorization code server will listen.
+         *
+         * @param port
+         * @return AuthenticatedBuilder
+         */
+        @ExperimentalUnsignedTypes
+        fun port(port: UInt): AuthenticatedBuilder {
+            this.port = port
+            return this
+        }
+
+        /**
+         * Amount of time within the authorization must execute. Default 5 minutes.
+         *
+         * @param timeout
+         * @return AuthenticatedBuilder
+         */
+        @ExperimentalTime
+        fun timeout(timeout: Duration): AuthenticatedBuilder {
+            this.timeout = timeout
+            return this
+        }
+
+        /**
+         * Launches the os browser app.
+         *
+         * It should be used mainly on android. If null it will try to use the internal browser launcher.
+         *
+         * @param browserLauncher
+         * @receiver Contains URI to launch the OS browser.
+         * @return AuthenticatedBuilder
+         */
+        fun browserLauncher(browserLauncher: (URI) -> Unit): AuthenticatedBuilder {
+            this.browserLauncher = browserLauncher
+            return this
+        }
+
+        /**
+         * Build a new Authenticated object.
+         *
+         * @return Authenticated.
+         */
+        @ExperimentalUnsignedTypes
+        @ExperimentalTime
+        internal fun build(): Authenticated = Authenticated(
+            this.secretKey,
+            this.scopes,
+            this.host,
+            this.port,
+            this.timeout,
+            this.browserLauncher
+        )
+
+        @ExperimentalUnsignedTypes
+        @ExperimentalTime
+        internal class Authenticated(
+            internal val secretKey: SecretKey,
+            internal val scopes: AuthScope = AuthScope.ALL,
+            internal val host: String = AuthCodeServer.DEFAULT_HOST,
+            internal val port: UInt = AuthCodeServer.DEFAULT_PORT,
+            internal val timeout: Duration = 5.toDuration(TimeUnit.MINUTES),
+            internal val browserLauncher: ((URI) -> Unit)? = null
+        )
     }
 }
 

@@ -26,13 +26,9 @@ import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AuthContext
-import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.ClearableAuthContext
-import pcf.crskdev.koonsplash.auth.SecretKey
-import java.net.URI
 import java.util.Arrays
-import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
 /**
@@ -55,29 +51,23 @@ class KoonsplashImpl(
 
     override val api: Api = ApiImpl(httpClient, AuthContext.None(this.authContext.accessKey))
 
-    override suspend fun authenticated(
-        secretKey: SecretKey,
-        scopes: AuthScope,
-        host: String,
-        port: UInt,
-        timeout: Duration,
-        browserLauncher: ((URI) -> Unit)?
-    ): Koonsplash.Auth {
+    override suspend fun authenticated(builder: Koonsplash.AuthenticatedBuilder): Koonsplash.Auth {
         try {
             if (!this.authContext.hasToken()) {
+                val authenticated = builder.build()
                 val newAuthToken = authorizer.authorize(
                     this.authContext.accessKey,
-                    secretKey,
-                    scopes,
-                    host,
-                    port,
-                    timeout,
-                    browserLauncher
+                    authenticated.secretKey,
+                    authenticated.scopes,
+                    authenticated.host,
+                    authenticated.port,
+                    authenticated.timeout,
+                    authenticated.browserLauncher
                 )
                 this.authContext.reset(newAuthToken)
             }
         } finally {
-            Arrays.fill(secretKey, ' ')
+            Arrays.fill(builder.secretKey, ' ')
         }
         return KoonsplashAuthImpl(this, this.authContext, httpClient)
     }

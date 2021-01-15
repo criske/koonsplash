@@ -43,8 +43,9 @@ fun main() {
             .authTokenStorage(storage)
             .build()
             .authenticated(
-                System.getenv("secret_key").toCharArray(),
-                AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER
+                Koonsplash
+                    .AuthenticatedBuilder(System.getenv("secret_key").toCharArray())
+                    .scopes(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER)
             )
             .api
 

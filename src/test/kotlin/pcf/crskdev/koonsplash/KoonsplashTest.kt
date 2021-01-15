@@ -22,15 +22,20 @@
 package pcf.crskdev.koonsplash
 
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.Dispatchers
+import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
+import java.net.URI
+import kotlin.time.DurationUnit
 import kotlin.time.ExperimentalTime
+import kotlin.time.toDuration
 
 @ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
-internal class KoonsplashBuilderTest : StringSpec({
+internal class KoonsplashTest : StringSpec({
 
     "should build" {
         Koonsplash.builder("123")
@@ -38,5 +43,21 @@ internal class KoonsplashBuilderTest : StringSpec({
             .dispatcher(Dispatchers.Main)
             .build()
             .shouldBeInstanceOf<Koonsplash>()
+    }
+
+    "should build authenticated" {
+        val launcher: (URI) -> Unit = {}
+        val built = Koonsplash.AuthenticatedBuilder("123".toCharArray())
+            .scopes(AuthScope.PUBLIC)
+            .host("foo")
+            .port(1u)
+            .timeout(10.toDuration(DurationUnit.MINUTES))
+            .browserLauncher(launcher)
+            .build()
+        built.secretKey shouldBe "123".toCharArray()
+        built.host shouldBe "foo"
+        built.port shouldBe 1u
+        built.timeout shouldBe 10.toDuration(DurationUnit.MINUTES)
+        built.browserLauncher shouldBe launcher
     }
 })

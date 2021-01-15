@@ -28,9 +28,7 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.mockk.coEvery
 import io.mockk.mockk
 import pcf.crskdev.koonsplash.Koonsplash
-import kotlin.time.DurationUnit
 import kotlin.time.ExperimentalTime
-import kotlin.time.toDuration
 
 @ExperimentalTime
 @ExperimentalUnsignedTypes
@@ -46,11 +44,11 @@ internal class SingletonTest : StringSpec({
         val singleton = KoonsplashSingleton(koonsplash)
 
         coEvery { auth.signOut() } returns koonsplash
-        coEvery { koonsplash.authenticated(any(), any(), any(), 3000u, 5.toDuration(DurationUnit.MINUTES), any()) } returns auth
+        coEvery { koonsplash.authenticated(any()) } returns auth
 
         KoonsplashSingleton.instance.shouldBeInstanceOf<Koonsplash>()
 
-        val singleAuth = singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
+        val singleAuth = singleton.authenticated(Koonsplash.AuthenticatedBuilder("secretKey".toCharArray()))
 
         singleAuth.shouldBeInstanceOf<Koonsplash.Auth>()
         singleAuth shouldBeSameInstanceAs KoonsplashSingleton.instance
@@ -64,12 +62,12 @@ internal class SingletonTest : StringSpec({
     "should throw if trying to authenticate twice without sign out" {
         val koonsplash = mockk<Koonsplash>(relaxed = true)
         val auth = mockk<Koonsplash.Auth>(relaxed = true)
-        coEvery { koonsplash.authenticated(any(), any(), any(), 3000u, 5.toDuration(DurationUnit.MINUTES), any()) } returns auth
+        coEvery { koonsplash.authenticated(any()) } returns auth
 
         val singleton = KoonsplashSingleton(koonsplash)
-        singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
+        singleton.authenticated(Koonsplash.AuthenticatedBuilder("secretKey".toCharArray()))
         shouldThrow<IllegalStateException> {
-            singleton.authenticated("secret".toCharArray(), browserLauncher = mockk())
+            singleton.authenticated(Koonsplash.AuthenticatedBuilder("secretKey".toCharArray()))
         }
     }
 
