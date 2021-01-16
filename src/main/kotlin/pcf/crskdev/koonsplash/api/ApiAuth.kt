@@ -22,8 +22,8 @@
 package pcf.crskdev.koonsplash.api
 
 import okhttp3.OkHttpClient
-import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 
 /**
  * Api authenticated endpoints.
@@ -40,18 +40,22 @@ interface ApiAuth : Api {
  * Api auth implementation.
  *
  * @property httpClient Http client.
- * @property authContext AuthContext.
+ * @property koonsplashContext KoonsplashContext.
  * @constructor
  * @param api Delegates unauthenticated API.
  */
 internal class ApiAuthImpl(
     api: Api,
     private val httpClient: OkHttpClient,
-    private val authContext: AuthContext
+    private val koonsplashContext: KoonsplashContext
 ) : ApiAuth, Api by api {
 
     override suspend fun me(verb: Verb) = call("/me", verb)()
 
     override fun call(endpoint: String, verb: Verb): ApiCall =
-        ApiCallImpl(Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb), httpClient, authContext)
+        ApiCallImpl(
+            Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb),
+            this.httpClient,
+            this.koonsplashContext
+        )
 }

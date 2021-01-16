@@ -45,7 +45,7 @@ internal class KoonsplashAuthImplTest : StringSpec({
 
         val koonsplash = KoonsplashAuthImpl(
             public,
-            CachedAuthContext(storage, ""),
+            KoonsplashContext.Builder().auth { CachedAuthContext(storage, "") }.build(),
             HttpClient.http
         )
 

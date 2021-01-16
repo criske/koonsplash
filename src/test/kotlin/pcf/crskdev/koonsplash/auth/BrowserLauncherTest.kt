@@ -73,11 +73,11 @@ internal class BrowserLauncherTest : StringSpec({
     }
 
     "it should delegate to external launcher" {
-        val external = mockk<(URI) -> Unit>(relaxed = true)
+        val external = mockk<(URI) -> Result<Unit>>(relaxed = true)
 
-        val launcher = BrowserLauncherImpl()
+        val launcher = BrowserLauncherImpl(externalLauncher = external)
 
-        launcher.launch(url, external)
+        launcher.launch(url)
 
         verify { external.invoke(url) }
     }

@@ -39,7 +39,6 @@ import pcf.crskdev.koonsplash.auth.Authorizer
 import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
-import java.net.URI
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -51,7 +50,9 @@ internal class KoonsplashImplTest : StringSpec({
 
     "should return api" {
         val koonsplash = KoonsplashImpl(
-            CachedAuthContext(mockk(relaxed = true), "access_123"),
+            KoonsplashContext.Builder()
+                .auth { CachedAuthContext(mockk(relaxed = true), "access_123") }
+                .build(),
             HttpClient.http,
             mockk()
         )
@@ -63,7 +64,9 @@ internal class KoonsplashImplTest : StringSpec({
         val storage = mockk<AuthTokenStorage>(relaxed = true)
         val authorizer = mockk<Authorizer>(relaxed = true)
         val koonsplash = KoonsplashImpl(
-            CachedAuthContext(storage, ""),
+            KoonsplashContext.Builder()
+                .auth { CachedAuthContext(storage, "access_123") }
+                .build(),
             HttpClient.http,
             authorizer
         )
@@ -73,7 +76,7 @@ internal class KoonsplashImplTest : StringSpec({
         val secretKey = "secret".toCharArray()
         val authenticated = koonsplash.authenticated(Koonsplash.AuthenticatedBuilder(secretKey).port(1u))
 
-        coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u, externalBrowserLauncher = any()) }
+        coVerify(exactly = 0) { authorizer.authorize(any(), any(), any(), any(), 1u) }
         authenticated.shouldBeInstanceOf<KoonsplashAuthImpl>()
         // should be cleared
         secretKey shouldBe " ".repeat(6).toCharArray()
@@ -89,15 +92,16 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
-                timeout: Duration,
-                externalBrowserLauncher: ((URI) -> Unit)?
+                timeout: Duration
             ): AuthToken {
                 return authToken
             }
         }
         every { storage.load() } returns null
         val koonsplash = KoonsplashImpl(
-            CachedAuthContext(storage, ""),
+            KoonsplashContext.Builder()
+                .auth { CachedAuthContext(storage, "access_123") }
+                .build(),
             HttpClient.http,
             authorizer
         )
@@ -120,15 +124,16 @@ internal class KoonsplashImplTest : StringSpec({
                 scopes: AuthScope,
                 host: String,
                 port: UInt,
-                timeout: Duration,
-                externalBrowserLauncher: ((URI) -> Unit)?
+                timeout: Duration
             ): AuthToken {
                 throw IllegalStateException("Failed to authorize")
             }
         }
         every { storage.load() } returns null
         val koonsplash = KoonsplashImpl(
-            CachedAuthContext(storage, ""),
+            KoonsplashContext.Builder()
+                .auth { CachedAuthContext(storage, "access_123") }
+                .build(),
             HttpClient.http,
             authorizer
         )

@@ -41,6 +41,7 @@ internal class KoonsplashTest : StringSpec({
         Koonsplash.builder("123")
             .authTokenStorage(AuthTokenStorage.None)
             .dispatcher(Dispatchers.Main)
+            .openLinksStrategy { Result.success(Unit) }
             .build()
             .shouldBeInstanceOf<Koonsplash>()
     }

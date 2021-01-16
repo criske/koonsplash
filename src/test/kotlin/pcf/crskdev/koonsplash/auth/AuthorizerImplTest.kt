@@ -64,8 +64,8 @@ internal class AuthorizerImplTest : StringSpecIT({
 
         val codeServer = MockAuthCodeServer()
         val browserLauncher = object : BrowserLauncher {
-            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
-                externalLauncher?.invoke(url)
+            override fun launch(url: URI): Result<Unit> {
+                codeServer.enqueueCode("123code")
                 return Result.success(Unit)
             }
         }
@@ -75,9 +75,7 @@ internal class AuthorizerImplTest : StringSpecIT({
             "123",
             "123".toCharArray(),
             AuthScope.PUBLIC,
-        ) {
-            codeServer.enqueueCode("123code")
-        }
+        )
 
         token shouldBe AuthToken(
             "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044",
@@ -92,7 +90,7 @@ internal class AuthorizerImplTest : StringSpecIT({
 
         val codeServer = MockAuthCodeServer()
         val browserLauncher = object : BrowserLauncher {
-            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+            override fun launch(url: URI): Result<Unit> {
                 return Result.failure(IllegalStateException("Failed to launch"))
             }
         }
@@ -110,7 +108,7 @@ internal class AuthorizerImplTest : StringSpecIT({
     "should time out" {
         val codeServer = MockAuthCodeServer()
         val browserLauncher = object : BrowserLauncher {
-            override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+            override fun launch(url: URI): Result<Unit> {
                 return Result.success(Unit)
             }
         }

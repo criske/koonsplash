@@ -29,7 +29,7 @@ internal class PaginationTest : StringSpec({
     "should parse link header when on first page" {
         val link =
             "<https://api.unsplash.com/photos?page=20182>; rel=\"last\", <https://api.unsplash.com/photos?page=2>; rel=\"next\""
-        val pagination = Pagination.createPagination({ mockk() }, link)
+        val pagination = Pagination.createPagination(mockk(), link)
         pagination.currentNumber shouldBe 1
         pagination.total shouldBe 20182
         pagination.firstPage shouldBe null
@@ -41,7 +41,7 @@ internal class PaginationTest : StringSpec({
     "should fully parse link header with all page links for page 2" {
         val link =
             "<https://api.unsplash.com/photos?page=1>; rel=\"first\", <https://api.unsplash.com/photos?page=1>; rel=\"prev\", <https://api.unsplash.com/photos?page=20128>; rel=\"last\", <https://api.unsplash.com/photos?page=3>; rel=\"next\""
-        val pagination = Pagination.createPagination({ mockk() }, link)
+        val pagination = Pagination.createPagination(mockk(), link)
         pagination.currentNumber shouldBe 2
         pagination.total shouldBe 20128
         pagination.firstPage.toString() shouldBe "https://api.unsplash.com/photos?page=1"
@@ -53,7 +53,7 @@ internal class PaginationTest : StringSpec({
     "should parse link header when on last page" {
         val link =
             "<https://api.unsplash.com/photos?page=1>; rel=\"first\", <https://api.unsplash.com/photos?page=20148>; rel=\"prev\""
-        val pagination = Pagination.createPagination({ mockk() }, link)
+        val pagination = Pagination.createPagination(mockk(), link)
         pagination.currentNumber shouldBe 20149
         pagination.total shouldBe 20149
         pagination.firstPage.toString() shouldBe "https://api.unsplash.com/photos?page=1"
@@ -64,7 +64,7 @@ internal class PaginationTest : StringSpec({
 
     "should default totalPages and current to 1" {
         val link = ""
-        val pagination = Pagination.createPagination({ mockk() }, link)
+        val pagination = Pagination.createPagination(mockk(), link)
         pagination.currentNumber shouldBe 1
         pagination.total shouldBe 1
     }

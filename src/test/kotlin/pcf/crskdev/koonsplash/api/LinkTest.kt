@@ -19,6 +19,8 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
+@file:Suppress("unused")
+
 package pcf.crskdev.koonsplash.api
 
 import io.kotest.assertions.throwables.shouldThrow
@@ -26,14 +28,17 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.toList
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
 import pcf.crskdev.koonsplash.auth.AuthContext
+import pcf.crskdev.koonsplash.auth.BrowserLauncher
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.http.HttpException
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.checksum
 import pcf.crskdev.koonsplash.util.fileFromPath
@@ -42,6 +47,7 @@ import pcf.crskdev.koonsplash.util.setBodyFromFile
 import pcf.crskdev.koonsplash.util.setBodyFromResource
 import pcf.crskdev.koonsplash.util.toFile
 import java.io.File
+import java.net.URI
 import java.util.UUID
 
 /**
@@ -54,15 +60,27 @@ import java.util.UUID
 @FlowPreview
 internal class LinkTest : StringSpecIT({
 
-    val apiCallProvider: (String) -> ApiCall = { url -> ApiCallImpl(Endpoint(url), HttpClient.http, AuthContext.None("")) }
+    val apiCallProvider: (String) -> ApiCall = { url ->
+        ApiCallImpl(
+            Endpoint(url),
+            HttpClient.http,
+            KoonsplashContext.Builder().auth { AuthContext.None("") }.build()
+        )
+    }
+
+    val context = KoonsplashContext.Builder().apiCaller(apiCallProvider).build()
 
     "should create the correct links" {
-        val apiLink = Link.create({ mockk() }, HttpClient.apiBaseUrl.resolve("/foo/bar/").toString())
-        val browseLink = Link.create({ mockk() }, "http://example.xyz/")
-        val downloadLink = Link.create({ mockk() }, HttpClient.apiBaseUrl.resolve("/foo/bar/download").toString())
-        val photoLink = Link.create({ mockk() }, HttpClient.imagesBaseUrl.resolve("/foo/bar/").toString())
+        val apiLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/").toString(), mockk())
+        val noPath = Link.create(HttpClient.apiBaseUrl.toString(), mockk())
+        val noPathNoSlash = Link.create(HttpClient.apiBaseUrl.toString().let { it.substring(0, it.length - 1) }, mockk())
+        val browseLink = Link.create("http://example.xyz/", mockk())
+        val downloadLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/download").toString(), mockk())
+        val photoLink = Link.create(HttpClient.imagesBaseUrl.resolve("/foo/bar/").toString(), mockk())
 
         apiLink.shouldBeInstanceOf<Link.Api>()
+        noPath.shouldBeInstanceOf<Link.Browser>()
+        noPathNoSlash.shouldBeInstanceOf<Link.Browser>()
         browseLink.shouldBeInstanceOf<Link.Browser>()
         downloadLink.shouldBeInstanceOf<Link.Download>()
         photoLink.shouldBeInstanceOf<Link.Photo>()
@@ -89,7 +107,7 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCall = apiCallProvider
+            context = context
         )
 
         val statuses = link
@@ -121,7 +139,7 @@ internal class LinkTest : StringSpecIT({
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk?ixid=1"),
             Link.Download.Policy.IMGIX,
-            apiCall = apiCallProvider
+            context
         )
 
         val statuses = link
@@ -159,7 +177,7 @@ internal class LinkTest : StringSpecIT({
         val fileUri = Link
             .Download(
                 HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                apiCall = apiCallProvider
+                context = context
             )
             .download(
                 fileFromPath("src", "test", "resources"),
@@ -194,7 +212,7 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCall = apiCallProvider
+            context = context
         )
         val statuses = link
             .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
@@ -222,7 +240,7 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCall = apiCallProvider
+            context = context
         )
         val statuses = link
             .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
@@ -249,7 +267,7 @@ internal class LinkTest : StringSpecIT({
 
         val link = Link.Download(
             HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            apiCall = apiCallProvider
+            context = context
         )
         val statuses = link
             .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
@@ -272,7 +290,7 @@ internal class LinkTest : StringSpecIT({
             Link
                 .Download(
                     HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                    apiCall = apiCallProvider
+                    context = context
                 )
                 .download(
                     fileFromPath("src", "test", "resources"),
@@ -297,12 +315,19 @@ internal class LinkTest : StringSpecIT({
                 else -> throw IllegalStateException("Unknown request path $path")
             }
         }
-        val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), apiCall = apiCallProvider)
+        val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), context = context)
         val likesLink: Link.Api = apiLink.call()["likes"]()
 
         likesLink.shouldBeInstanceOf<Link.Api>()
 
         likesLink.call().isEmpty shouldBe true
+    }
+
+    "should open a browser link" {
+        val launcher = mockk<BrowserLauncher>(relaxed = true)
+        val link = Link.Browser(URI.create("/"), KoonsplashContext.Builder().browserLauncher(launcher).build())
+        link.open()
+        verify { launcher.launch(URI.create("/")) }
     }
 })
 

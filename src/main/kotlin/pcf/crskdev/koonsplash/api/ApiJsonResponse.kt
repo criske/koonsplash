@@ -22,6 +22,7 @@
 package pcf.crskdev.koonsplash.api
 
 import com.google.gson.JsonParser
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.io.Reader
 
 /**
@@ -38,14 +39,14 @@ import java.io.Reader
  * ```
  * The ApiJson invocation ([ApiJson.invoke]) will try to get a value of String, Boolean, Number and Link.
  *
- * @property apiCall [ApiCall] required for opening links
+ * @property context KoonsplashContext
  * @property reader [Reader] for parsing the response.
  * @property headers to extract limit and paging for ApiMeta.
  * @author Cristian Pela
  * @since 0.1
  */
 class ApiJsonResponse internal constructor(
-    private val apiCall: (String) -> ApiCall,
+    private val context: KoonsplashContext,
     private val reader: Reader,
     private val headers: Headers,
 ) {
@@ -58,12 +59,12 @@ class ApiJsonResponse internal constructor(
     /**
      * ApiJson wrapping json element
      */
-    private val apiJson = ApiJson(element, apiCall)
+    private val apiJson = ApiJson(element, context)
 
     /**
      * Meta.
      */
-    val meta = ApiMeta(headers, apiCall)
+    val meta = ApiMeta(headers, context)
 
     /**
      * Gets an ApiJson element based on:

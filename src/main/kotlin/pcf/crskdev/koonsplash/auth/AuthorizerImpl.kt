@@ -28,7 +28,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import pcf.crskdev.koonsplash.http.HttpClient
-import java.net.URI
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -53,8 +52,7 @@ internal class AuthorizerImpl(
         scopes: AuthScope,
         host: String,
         port: UInt,
-        timeout: Duration,
-        externalBrowserLauncher: ((URI) -> Unit)?
+        timeout: Duration
     ): AuthToken = coroutineScope {
         val server = serverFactory(host, port)
 
@@ -78,7 +76,7 @@ internal class AuthorizerImpl(
                 .toUrl()
                 .toURI()
             browserLauncher
-                .launch(url, externalBrowserLauncher)
+                .launch(url)
                 .onFailure { close(it) }
             awaitClose {
                 server.stopServing()

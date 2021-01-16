@@ -32,19 +32,14 @@ import java.nio.charset.Charset
  * @author Cristian Pela
  * @since 0.1
  */
-internal interface BrowserLauncher {
+interface BrowserLauncher {
 
     /**
-     * If `externalLauncher` is null, it will try to launch the url using the OS default browser.
-     *
-     * Note: this mainly will work if OS is a desktop one (win, linux, mac).
-     * On mobile (android), user should handle the launch intent themselves by providing the `externalLauncher`.
-     *
+     * Launches the browser with the URI.
      * @param url
-     * @param externalLauncher
      * @return Result success if launch was ok
      */
-    fun launch(url: URI, externalLauncher: ((URI) -> Unit)? = null): Result<Unit>
+    fun launch(url: URI): Result<Unit>
 
     /**
      * Checks the current OS name.
@@ -132,10 +127,11 @@ internal interface BrowserLauncher {
  */
 internal class BrowserLauncherImpl(
     private val commander: BrowserLauncher.CommandExecutor = BrowserLauncher.CommandExecutor.Default,
-    private val osFinder: BrowserLauncher.OsFinder = BrowserLauncher.OsFinder.Default
+    private val osFinder: BrowserLauncher.OsFinder = BrowserLauncher.OsFinder.Default,
+    private val externalLauncher: ((URI) -> Result<Unit>)? = null
 ) : BrowserLauncher {
 
-    override fun launch(url: URI, externalLauncher: ((URI) -> Unit)?): Result<Unit> {
+    override fun launch(url: URI): Result<Unit> {
         if (externalLauncher != null) {
             externalLauncher.invoke(url)
         } else {

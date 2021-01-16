@@ -36,6 +36,7 @@ import pcf.crskdev.koonsplash.auth.BrowserLauncherImpl
 import pcf.crskdev.koonsplash.auth.CachedAuthContext
 import pcf.crskdev.koonsplash.auth.SecretKey
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import pcf.crskdev.koonsplash.internal.KoonsplashImpl
 import pcf.crskdev.koonsplash.internal.KoonsplashSingleton
 import java.net.URI
@@ -243,6 +244,11 @@ class KoonsplashBuilder internal constructor(
     private var authTokenStorage: AuthTokenStorage = AuthTokenStorage.None
 
     /**
+     * Open links strategy.
+     */
+    private var openLinksStrategy: ((URI) -> Result<Unit>)? = null
+
+    /**
      * Dispatcher.
      *
      * @param dispatcher CoroutineDispatcher
@@ -257,14 +263,35 @@ class KoonsplashBuilder internal constructor(
         return this
     }
 
+    /**
+     * Open Links Strategy.
+     * If there is no strategy, it will try to launch the url using the OS default browser.
+     *
+     * Note: this mainly will work if OS is a desktop one (win, linux, mac).
+     * On mobile (android), user should handle the launch intent themselves by providing the `openLinksStrategy`.
+     *
+     * @param strategy
+     * @receiver Provide logic on how to open the URI. Returns Result.success(Unit) if all is ok
+     * return
+     */
+    fun openLinksStrategy(strategy: (URI) -> Result<Unit>): KoonsplashBuilder {
+        this.openLinksStrategy = strategy
+        return this
+    }
+
     fun build(): Koonsplash {
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), BrowserLauncherImpl()) { host, port ->
+        val authContext = CachedAuthContext(this.authTokenStorage, this.accessKey)
+        val browserLauncher = BrowserLauncherImpl(externalLauncher = this.openLinksStrategy)
+        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { host, port ->
             AuthCodeServerImpl(AuthCodeServer.createCallback(host, port))
         }
-        val authContext = CachedAuthContext(this.authTokenStorage, this.accessKey)
+        val koonsplashContext = KoonsplashContext.Builder()
+            .auth { authContext }
+            .browserLauncher(browserLauncher)
+            .build()
         return KoonsplashSingleton(
             KoonsplashImpl(
-                authContext,
+                koonsplashContext,
                 HttpClient.http,
                 authorizer
             )

@@ -21,7 +21,6 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import java.net.URI
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.ExperimentalTime
@@ -47,8 +46,6 @@ interface Authorizer {
      * @param host Host.
      * @param port Int.
      * @param timeout Amount of time within the authorization must execute. Default 5 minutes.
-     * @param externalBrowserLauncher Lambda that launches the os browser app.
-     * It should be used mainly on android. If null it will use the internal browser launcher.
      * @receiver
      * @return AuthToken
      */
@@ -58,7 +55,6 @@ interface Authorizer {
         scopes: AuthScope,
         host: String = AuthCodeServer.DEFAULT_HOST,
         port: UInt = AuthCodeServer.DEFAULT_PORT,
-        timeout: Duration = 5.toDuration(DurationUnit.MINUTES),
-        externalBrowserLauncher: ((URI) -> Unit)? = null
+        timeout: Duration = 5.toDuration(DurationUnit.MINUTES)
     ): AuthToken
 }

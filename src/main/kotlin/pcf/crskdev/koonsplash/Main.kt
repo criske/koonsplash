@@ -72,7 +72,8 @@ fun main() {
             80u.q
         }
         // Desktop.getDesktop().browse(filter.asPhotoLink().url)
-        filter.asDownloadLink().download(File("C:\\Users\\user\\Desktop"), id)
+        val saved = filter.asDownloadLink().download(File("C:\\Users\\user\\Desktop"), id)
+        saved.open()
     }
 
     HttpClient.http.dispatcher.executorService.shutdown()

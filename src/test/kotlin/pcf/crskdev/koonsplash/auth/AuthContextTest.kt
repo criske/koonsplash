@@ -25,6 +25,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldNotBeSameInstanceAs
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
-internal class CachedAuthContextTest : StringSpec({
+internal class AuthContextTest : StringSpec({
 
     val dispatcherA = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     val dispatcherB = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
@@ -104,5 +105,34 @@ internal class CachedAuthContextTest : StringSpec({
     "has access key" {
         val context = CachedAuthContext(mockk(relaxed = true), "123")
         context.accessKey shouldBe "123"
+    }
+
+    "should throw if is not clearable" {
+        shouldThrow<UnsupportedOperationException> {
+            object : AuthContext {
+                override val accessKey: AccessKey
+                    get() = throw UnsupportedOperationException()
+
+                override suspend fun getToken(): AuthToken? {
+                    throw UnsupportedOperationException()
+                }
+            }.asClearable()
+        }
+        shouldThrow<UnsupportedOperationException> {
+            CachedAuthContext(mockk(relaxed = true), "").safe().asClearable()
+        }
+    }
+
+    "should be the same instance when safe-ing an non clearable auth context " {
+        val context = mockk<AuthContext>(relaxed = true)
+        context.safe() shouldBe context
+    }
+
+    "should be the diff instance when safe-ing an non clearable auth context " {
+        val context = CachedAuthContext(mockk(relaxed = true), "foo")
+        val safe = context.safe()
+        safe shouldNotBeSameInstanceAs context
+        safe.getToken().shouldNotBeNull()
+        safe.accessKey shouldBe "foo"
     }
 })
