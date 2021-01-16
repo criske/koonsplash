@@ -69,10 +69,15 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
             val uri = URI.create(url)
             return when (uri.authority) {
                 HttpClient.apiBaseUrl.authority -> {
-                    if (uri.path?.endsWith("download") == true) {
-                        Download(uri, context = context)
+                    val path = uri.path?.takeIf { it != "/" }
+                    if (path != null) {
+                        if (path.endsWith("download")) {
+                            Download(uri, context = context)
+                        } else {
+                            Api(uri, context)
+                        }
                     } else {
-                        Api(uri, context)
+                        Browser(uri, context)
                     }
                 }
                 HttpClient.imagesBaseUrl.authority -> Photo(uri, context)
