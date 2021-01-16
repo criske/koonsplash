@@ -35,6 +35,7 @@ import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.resource
 import pcf.crskdev.koonsplash.util.setBodyFromResource
@@ -44,15 +45,20 @@ import java.util.concurrent.TimeUnit
 @ExperimentalCoroutinesApi
 internal class ApiCallImplTest : StringSpecIT({
 
-    val api = ApiImpl(HttpClient.http, AuthContext.None("key_123"))
+    val api = ApiImpl(
+        HttpClient.http,
+        KoonsplashContext.Builder().auth { AuthContext.None("key_123") }.build()
+    )
 
-    val authContext = object : AuthContext {
-        override val accessKey: AccessKey
-            get() = "key_123"
+    val context = KoonsplashContext.Builder().auth {
+        object : AuthContext {
+            override val accessKey: AccessKey
+                get() = "key_123"
 
-        override suspend fun getToken(): AuthToken? =
-            AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
-    }
+            override suspend fun getToken(): AuthToken? =
+                AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+        }
+    }.build()
 
     "should perform api call" {
         dispatchable = {
@@ -163,7 +169,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 )
             ),
             HttpClient.http,
-            authContext
+            context
         )()
 
         with(lastRequest()) {
@@ -190,7 +196,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 )
             ),
             HttpClient.http,
-            authContext
+            context
         )()
 
         with(lastRequest()) {
@@ -215,7 +221,7 @@ internal class ApiCallImplTest : StringSpecIT({
                 Verb.Delete
             ),
             HttpClient.http,
-            authContext
+            context
         )()
 
         with(lastRequest()) {

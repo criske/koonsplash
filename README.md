@@ -9,13 +9,15 @@ Unofficial client side Kotlin wrapper for Unsplash API.
 ```kotlin
 runBlocking {
     val api = Koonsplash.builder("my-access-key-client-id")
+                .openLinksStrategy {
+                    //if _openLinksStrategy_ is not set. Koonsplash will try to open browser or photo links using os terminal.
+                    Desptop.browse(it)
+                    Result.success(Unit)
+                }
                 .build()
                 .authenticated(
                     Koonsplash.AuthenticatedBuilder(charArrayOf('s','e','c','r','e','t','-','k','e','y'))
                         .scopes(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER)
-                        .browserLauncher {
-                             Desktop.browse(it)  // launching the browser depends on platform
-                        } 
                 )   
                 .api
     val me = api.call("/me")()
@@ -30,7 +32,7 @@ runBlocking {
             when (status) {
                 is ApiCall.Status.Canceled -> status.err.printStackTrace()
                 is ApiCall.Status.Current  -> println("Progress: ${status.value}%")
-                is ApiCall.Status.Done     -> Desktop.browse(status.resource.url)
+                is ApiCall.Status.Done     -> status.resource.open()
                 is ApiCall.Status.Starting -> println("Starting")
             }
         }
@@ -47,7 +49,8 @@ val resizedPhoto = photo.resize{
     100.q
     fm(Fm.PNG)
 }.toDownloadLink()
-resizedPhoto.download(File("<path>"), "my-resized-photo")
+val saved: Link.Browser = resizedPhoto.download(File("<path>"), "my-resized-photo")
+saved.open()
 ```
 
 **Work in progress...**

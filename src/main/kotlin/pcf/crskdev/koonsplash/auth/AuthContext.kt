@@ -30,7 +30,7 @@ import kotlinx.coroutines.sync.withLock
  * @author Cristian Pela
  * @since 0.1
  */
-interface AuthContext {
+internal interface AuthContext {
 
     /**
      * Access key which is constant across the lib.
@@ -45,6 +45,15 @@ interface AuthContext {
     suspend fun getToken(): AuthToken?
 
     /**
+     * As clearable context.
+     *
+     * @return Clear
+     */
+    fun asClearable(): ClearableAuthContext {
+        throw UnsupportedOperationException("This is not a ClearableAuthContext but $this")
+    }
+
+    /**
      * None.
      *
      */
@@ -54,12 +63,28 @@ interface AuthContext {
 }
 
 /**
+ * Makes sure that doesn't have access to ClearableAuthContext
+ *
+ */
+internal fun AuthContext.safe() =
+    if (this is ClearableAuthContext) {
+        object : AuthContext {
+            override val accessKey: AccessKey
+                get() = this@safe.accessKey
+
+            override suspend fun getToken(): AuthToken? = this@safe.getToken()
+        }
+    } else {
+        this
+    }
+
+/**
  * Clearable Auth context.
  *
  * @author Cristian Pela
  * @since 0.1
  */
-interface ClearableAuthContext : AuthContext {
+internal interface ClearableAuthContext : AuthContext {
 
     /**
      * Has token set.
@@ -79,6 +104,8 @@ interface ClearableAuthContext : AuthContext {
      * @param authToken
      */
     suspend fun reset(authToken: AuthToken)
+
+    override fun asClearable(): ClearableAuthContext = this
 }
 
 /**

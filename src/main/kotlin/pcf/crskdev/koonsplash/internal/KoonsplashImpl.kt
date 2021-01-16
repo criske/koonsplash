@@ -27,7 +27,6 @@ import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiImpl
 import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.Authorizer
-import pcf.crskdev.koonsplash.auth.ClearableAuthContext
 import java.util.Arrays
 import kotlin.time.ExperimentalTime
 
@@ -43,32 +42,38 @@ import kotlin.time.ExperimentalTime
 @ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalStdlibApi
-class KoonsplashImpl(
-    private val authContext: ClearableAuthContext,
+internal class KoonsplashImpl(
+    private val koonsplashContext: KoonsplashContext,
     private val httpClient: OkHttpClient,
     private val authorizer: Authorizer
 ) : Koonsplash {
 
-    override val api: Api = ApiImpl(httpClient, AuthContext.None(this.authContext.accessKey))
+    override val api: Api = ApiImpl(
+        httpClient,
+        koonsplashContext
+            .newBuilder()
+            .auth { AuthContext.None(it.accessKey) }
+            .build()
+    )
 
     override suspend fun authenticated(builder: Koonsplash.AuthenticatedBuilder): Koonsplash.Auth {
         try {
-            if (!this.authContext.hasToken()) {
+            val clearableAuthContext = koonsplashContext.auth.asClearable()
+            if (!clearableAuthContext.hasToken()) {
                 val authenticated = builder.build()
                 val newAuthToken = authorizer.authorize(
-                    this.authContext.accessKey,
+                    clearableAuthContext.accessKey,
                     authenticated.secretKey,
                     authenticated.scopes,
                     authenticated.host,
                     authenticated.port,
-                    authenticated.timeout,
-                    authenticated.browserLauncher
+                    authenticated.timeout
                 )
-                this.authContext.reset(newAuthToken)
+                clearableAuthContext.reset(newAuthToken)
             }
         } finally {
             Arrays.fill(builder.secretKey, ' ')
         }
-        return KoonsplashAuthImpl(this, this.authContext, httpClient)
+        return KoonsplashAuthImpl(this, this.koonsplashContext, httpClient)
     }
 }

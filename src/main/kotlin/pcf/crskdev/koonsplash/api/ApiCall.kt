@@ -37,10 +37,11 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
 import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
 import pcf.crskdev.koonsplash.http.HttpClient.withProgressListener
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
+import pcf.crskdev.koonsplash.internal.newBuilder
 import java.io.InputStream
 import java.io.Reader
 import java.io.StringReader
@@ -170,13 +171,12 @@ interface ApiCall {
  * API call impl.
  *
  * @property httpClient Http client
- * @property accessKey Access key
- * @property authToken Auth Token, might be null for unauthenticated calls.
+ * @property context KoonsplashContext.
  */
 internal class ApiCallImpl(
     private val endpoint: Endpoint,
     private val httpClient: OkHttpClient,
-    private val authContext: AuthContext
+    private val context: KoonsplashContext
 ) : ApiCall {
 
     private val endpointParser = EndpointParser(endpoint)
@@ -214,9 +214,9 @@ internal class ApiCallImpl(
                 }
             }
             .build()
-        val token = authContext.getToken()
+        val token = context.auth.getToken()
         val request = Request.Builder()
-            .addKoonsplashHeaders(token, authContext.accessKey)
+            .addKoonsplashHeaders(token, context.auth.accessKey)
             .url(url)
             .apply {
                 when (endpoint.verb) {
@@ -291,8 +291,11 @@ internal class ApiCallImpl(
     ): Flow<ApiCall.Status<ApiJsonResponse>> =
         execute(params, progressType) { response ->
             val jsonReader = response.reader
+            val contextWithApiCaller = context.newBuilder()
+                .apiCaller { ApiCallImpl(Endpoint(it), httpClient, context) }
+                .build()
             ApiJsonResponse(
-                { link -> ApiCallImpl(Endpoint(link), httpClient, authContext) },
+                contextWithApiCaller,
                 jsonReader,
                 response.headers
             )

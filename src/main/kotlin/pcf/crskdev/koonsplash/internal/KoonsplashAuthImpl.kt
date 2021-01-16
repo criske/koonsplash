@@ -26,21 +26,29 @@ import okhttp3.OkHttpClient
 import pcf.crskdev.koonsplash.Koonsplash
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.api.ApiAuthImpl
-import pcf.crskdev.koonsplash.auth.ClearableAuthContext
+import pcf.crskdev.koonsplash.auth.safe
 
 /**
  * Koonsplash auth implementation.
  */
 internal class KoonsplashAuthImpl(
     private val public: Koonsplash,
-    private val authContext: ClearableAuthContext,
+    private val context: KoonsplashContext,
     private val httpClient: OkHttpClient,
 ) : Koonsplash.Auth {
 
-    override val api: ApiAuth get() = ApiAuthImpl(public.api, httpClient, authContext)
+    override val api: ApiAuth
+        get() = ApiAuthImpl(
+            public.api,
+            httpClient,
+            context
+                .newBuilder()
+                .auth { it.safe() }
+                .build()
+        )
 
     override suspend fun signOut(): Koonsplash = coroutineScope {
-        authContext.clear()
+        context.auth.asClearable().clear()
         public
     }
 }

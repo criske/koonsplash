@@ -30,7 +30,7 @@ import java.io.StringReader
 internal class ApiJsonResponseTest : StringSpec({
 
     val response = ApiJsonResponse(
-        { mockk() },
+        mockk(relaxed = true),
         StringReader("[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]"),
         emptyMap()
     )

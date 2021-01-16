@@ -27,12 +27,13 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.internal.LazilyParsedNumber
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.io.Reader
 
 /**
  * Api response json model tree backed by gson.
  *
- * @property apiCall [ApiCall] required for opening links
+ * @property context: KoonsplashContext
  * @property jsonEl Current json element
  * @constructor Create empty Api json
  * @author Cristian Pela
@@ -40,7 +41,7 @@ import java.io.Reader
  */
 class ApiJson internal constructor(
     @PublishedApi internal val jsonEl: JsonElement,
-    @PublishedApi internal val apiCall: (String) -> ApiCall
+    @PublishedApi internal val context: KoonsplashContext
 ) {
 
     companion object {
@@ -48,21 +49,21 @@ class ApiJson internal constructor(
         /**
          * Create ApiJson from reader
          *
-         * @param reader Reader
+         * @param context KoonsplashContext
          * @param apiCall Api Call provider
          */
-        internal fun createFromReader(reader: Reader, apiCall: (String) -> ApiCall) =
-            ApiJson(JsonParser.parseReader(reader), apiCall)
+        internal fun createFromReader(reader: Reader, context: KoonsplashContext) =
+            ApiJson(JsonParser.parseReader(reader), context)
 
         /**
          * Create ApiJson from string mainly used as convenience method in tests.
          *
          * @param json String
-         * @param apiCall Api Call provider
+         * @param context KoonsplashContext
          * @receiver
          */
-        internal fun createFromString(json: String, apiCall: (String) -> ApiCall) =
-            ApiJson(JsonParser.parseString(json), apiCall)
+        internal fun createFromString(json: String, context: KoonsplashContext) =
+            ApiJson(JsonParser.parseString(json), context)
     }
 
     /**
@@ -74,7 +75,7 @@ class ApiJson internal constructor(
     inline operator fun <reified T> invoke(): T {
         val kClass = T::class
         if (Link::class.java.isAssignableFrom(kClass.java)) {
-            return Link.create(this.apiCall, this.jsonEl.asString) as T
+            return Link.create(this.jsonEl.asString, this.context) as T
         }
         return when (kClass) {
             Number::class -> (this.jsonEl.asNumber as LazilyParsedNumber).toKotlinNumber()
@@ -128,7 +129,7 @@ class ApiJson internal constructor(
                 "Invalid selector ${selector::class.java}. Only strings or integers are permitted."
             )
         }
-        return ApiJson(element, this.apiCall)
+        return ApiJson(element, this.context)
     }
 
     /**

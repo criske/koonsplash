@@ -21,19 +21,20 @@
 
 package pcf.crskdev.koonsplash.api
 
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.net.URI
 
 /**
  * Api response "metadata". This contains info about rate limit and pagination.
- *
- * @property apiCall [ApiCall] required for opening page links.
+ *.
  * @property headers Multi map to extract limit and paging.
+ * @property context KoonsplashContext.
  * @author Cristian Pela
  * @since 0.1
  */
 class ApiMeta internal constructor(
     private val headers: Headers,
-    private val apiCall: (String) -> ApiCall
+    private val context: KoonsplashContext
 ) {
 
     /**
@@ -46,7 +47,7 @@ class ApiMeta internal constructor(
      */
     val pagination: Pagination? = headers["Link"]
         ?.first()
-        ?.let { Pagination.createPagination(apiCall, it) }
+        ?.let { Pagination.createPagination(context, it) }
 }
 
 /**
@@ -71,7 +72,7 @@ class Pagination internal constructor(
     companion object {
 
         internal fun createPagination(
-            apiCall: (String) -> ApiCall,
+            context: KoonsplashContext,
             headerValue: String
         ): Pagination {
             val links = mutableMapOf<String, String>()
@@ -107,10 +108,10 @@ class Pagination internal constructor(
                 ?: links["next"]?.let(page)?.dec()
                 ?: links["first"]?.let(page)
                 ?: 1
-            val firstPage = links["first"]?.let { Link.Api(URI.create(it), apiCall) }
-            val prevPage = links["prev"]?.let { Link.Api(URI.create(it), apiCall) }
-            val nextPage = links["next"]?.let { Link.Api(URI.create(it), apiCall) }
-            val lastPage = links["last"]?.let { Link.Api(URI.create(it), apiCall) }
+            val firstPage = links["first"]?.let { Link.Api(URI.create(it), context) }
+            val prevPage = links["prev"]?.let { Link.Api(URI.create(it), context) }
+            val nextPage = links["next"]?.let { Link.Api(URI.create(it), context) }
+            val lastPage = links["last"]?.let { Link.Api(URI.create(it), context) }
             return Pagination(total, currentPageNo, firstPage, prevPage, nextPage, lastPage)
         }
     }

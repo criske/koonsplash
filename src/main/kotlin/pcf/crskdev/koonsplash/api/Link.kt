@@ -38,6 +38,7 @@ import pcf.crskdev.koonsplash.api.resize.ResizeDSL
 import pcf.crskdev.koonsplash.api.resize.ResizeException
 import pcf.crskdev.koonsplash.api.resize.withResize
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
@@ -46,33 +47,36 @@ import java.net.URI
  * Representation of a url from json response.
  *
  * @property url URL
+ * @property context KoonsplashContext.
  * @author Cristian Pela
  * @since 0.1
  */
-sealed class Link(val url: URI) {
+sealed class Link(val url: URI, internal val context: KoonsplashContext) {
 
     override fun toString(): String = this.url.toString()
 
     companion object {
+
         /**
          * Creates a link based on url.
          *
-         * @param apiCall [ApiCall] required for opening links.
          * @param url URL
+         * @param context KoonsplashContext
          * @return Link
          */
-        fun create(apiCall: (String) -> ApiCall, url: String): Link {
+        @PublishedApi
+        internal fun create(url: String, context: KoonsplashContext): Link {
             val uri = URI.create(url)
             return when (uri.authority) {
                 HttpClient.apiBaseUrl.authority -> {
                     if (uri.path?.endsWith("download") == true) {
-                        Download(uri, apiCall = apiCall)
+                        Download(uri, context = context)
                     } else {
-                        Api(uri, apiCall)
+                        Api(uri, context)
                     }
                 }
-                HttpClient.imagesBaseUrl.authority -> Photo(uri, apiCall)
-                else -> Browser(uri)
+                HttpClient.imagesBaseUrl.authority -> Photo(uri, context)
+                else -> Browser(uri, context)
             }
         }
     }
@@ -84,14 +88,14 @@ sealed class Link(val url: URI) {
      * @constructor
      * @param url URL
      */
-    class Api(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
+    class Api internal constructor(url: URI, context: KoonsplashContext) : Link(url, context) {
 
         /**
          * Calls the link URL.
          *
          * @return ApiJsonResponse
          */
-        suspend fun call(): ApiJsonResponse = coroutineScope { apiCall(url.toString())() }
+        suspend fun call(): ApiJsonResponse = coroutineScope { context.apiCaller(url.toString())() }
     }
 
     /**
@@ -99,13 +103,23 @@ sealed class Link(val url: URI) {
      * unsplash (external links like portfolio, author site etc...), or links that have their url
      * not part of _api.unsplash.com_ domain.
      *
-     * It's up to client to launch this link in a browser.
+     * The links can be opened in a browser or, depending on url schema, in the os default photo app.
      *
      * @constructor
      *
      * @param url Url
+     * @param context KoonsplashContext
      */
-    class Browser(url: URI) : Link(url)
+    class Browser internal constructor(url: URI, context: KoonsplashContext) : Link(url, context) {
+
+        /**
+         * Open the wrapped link.
+         *
+         */
+        fun open() {
+            this.context.browserLauncher.launch(url)
+        }
+    }
 
     /**
      * Downloads a photo.
@@ -113,13 +127,13 @@ sealed class Link(val url: URI) {
      * @constructor
      *
      * @param url Photo link url.
-     * @param apiCall [ApiCall] required for download the link.
+     * @param context: KoonsplashContext
      */
-    class Download(
+    class Download internal constructor(
         url: URI,
         private val policy: Policy = Policy.UNSPLASH,
-        private val apiCall: (String) -> ApiCall
-    ) : Link(url) {
+        context: KoonsplashContext
+    ) : Link(url, context) {
 
         enum class Policy {
             UNSPLASH, IMGIX
@@ -146,13 +160,13 @@ sealed class Link(val url: URI) {
         ): Flow<ApiCall.Status<Browser>> {
             return when (policy) {
                 Policy.UNSPLASH ->
-                    apiCall(url.toString())
+                    this.context.apiCaller(url.toString())
                         .execute(emptyList(), ApiCall.Progress.Ignore)
                         .flatMapConcat {
                             when (it) {
                                 is ApiCall.Status.Done -> {
                                     val downloadUrl: String = it.resource["url"]()
-                                    apiCall(downloadUrl).execute(emptyList(), progressType) { response ->
+                                    this.context.apiCaller(downloadUrl).execute(emptyList(), progressType) { response ->
                                         save(response, dir, fileName, bufferSize)
                                     }
                                 }
@@ -162,7 +176,7 @@ sealed class Link(val url: URI) {
                         }
                         .flowOn(dispatcher)
                 Policy.IMGIX ->
-                    apiCall(this.url.toString()).execute(emptyList(), progressType) { response ->
+                    this.context.apiCaller(this.url.toString()).execute(emptyList(), progressType) { response ->
                         save(response, dir, fileName, bufferSize)
                     }.flowOn(dispatcher)
             }
@@ -196,7 +210,7 @@ sealed class Link(val url: URI) {
                         fos.write(buffer, 0, count)
                     }
                 }
-                Browser(file.toURI())
+                Browser(file.toURI(), this.context)
             }
         }
     }
@@ -207,8 +221,10 @@ sealed class Link(val url: URI) {
      * @constructor
      *
      * @param url
+     * @param context
      */
-    class Photo(url: URI, private val apiCall: (String) -> ApiCall) : Link(url) {
+    class Photo internal constructor(url: URI, context: KoonsplashContext) :
+        Link(url, context) {
 
         /**
          * Dynamically resizable Photo dsl entry point.
@@ -218,7 +234,7 @@ sealed class Link(val url: URI) {
          */
         @ExperimentalUnsignedTypes
         fun resize(from: ResizeDSL = ResizeDSL.NONE, dslScopeBlock: ResizeDSL.Scope.() -> Unit = {}): Resize {
-            return Resize(this.url, withResize(from, dslScopeBlock), this.apiCall)
+            return Resize(this.url, withResize(from, dslScopeBlock), this.context)
         }
 
         /**
@@ -227,7 +243,7 @@ sealed class Link(val url: URI) {
          * @property checked Flag that marks if baseUrl was checked for having "ixid" parameters.
          * @property dsl ResizeDSL.
          * @property baseUrl Initial url
-         * @property apiCall [ApiCall] required for download the photo.
+         * @property context KoonsplashContext
          * @constructor Create empty Resize
          */
         @ExperimentalUnsignedTypes
@@ -235,7 +251,7 @@ sealed class Link(val url: URI) {
             private val checked: Boolean,
             private val baseUrl: URI,
             dsl: ResizeDSL,
-            private val apiCall: (String) -> ApiCall
+            private val context: KoonsplashContext
         ) {
 
             /**
@@ -244,8 +260,8 @@ sealed class Link(val url: URI) {
             internal constructor(
                 baseUrl: URI,
                 dsl: ResizeDSL,
-                apiCall: (String) -> ApiCall
-            ) : this(false, baseUrl, dsl, apiCall)
+                context: KoonsplashContext
+            ) : this(false, baseUrl, dsl, context)
 
             /**
              * Merged dsl fom baseUrl and the passed dsl.
@@ -264,14 +280,18 @@ sealed class Link(val url: URI) {
              *
              * @return Link
              */
-            fun asDownloadLink(): Download = Link.Download(this.url(), Download.Policy.IMGIX, apiCall)
+            fun asDownloadLink(): Download = Link.Download(
+                this.url(),
+                Download.Policy.IMGIX,
+                this.context
+            )
 
             /**
              * As photo link.
              *
              * @return Link.
              */
-            fun asPhotoLink(): Photo = Link.Photo(this.url(), apiCall)
+            fun asPhotoLink(): Photo = Link.Photo(this.url(), this.context)
 
             /**
              * Add new Resize dsl this one.
@@ -281,7 +301,12 @@ sealed class Link(val url: URI) {
              * @return New Resize.
              */
             fun add(dslScopeBlock: ResizeDSL.Scope.() -> Unit): Resize =
-                Resize(true, this.baseUrl, withResize(this.mergedDSL, dslScopeBlock), apiCall)
+                Resize(
+                    true,
+                    this.baseUrl,
+                    withResize(this.mergedDSL, dslScopeBlock),
+                    this.context
+                )
 
             /**
              * Reset the resizing, all the Resize construct will be lost.
@@ -298,7 +323,12 @@ sealed class Link(val url: URI) {
                     .newBuilder()
                     .addQueryParameter("ixid", ixid)
                     .build().toUri()
-                return Resize(true, resetBaseUrl, withResize(scope = dslScopeBlock), apiCall)
+                return Resize(
+                    true,
+                    resetBaseUrl,
+                    withResize(scope = dslScopeBlock),
+                    this.context
+                )
             }
 
             /**

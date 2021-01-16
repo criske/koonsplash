@@ -31,18 +31,19 @@ import pcf.crskdev.koonsplash.auth.AuthContext
 import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.setBodyFromResource
 
 internal class ApiAuthImplTest : StringSpecIT({
 
-    val context = mockk<AuthContext>(relaxed = true)
-    coEvery { context.getToken() } returns AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
-    every { context.accessKey } returns "key_123"
+    val authContext = mockk<AuthContext>(relaxed = true)
+    coEvery { authContext.getToken() } returns AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
+    every { authContext.accessKey } returns "key_123"
     val api = ApiAuthImpl(
         mockk(),
         HttpClient.http,
-        context
+        KoonsplashContext.Builder().auth { authContext }.build()
     )
 
     "should call me" {
