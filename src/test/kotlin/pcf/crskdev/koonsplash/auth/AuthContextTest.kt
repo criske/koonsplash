@@ -25,12 +25,12 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldNotBeSameInstanceAs
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
-import java.lang.UnsupportedOperationException
 import java.util.concurrent.Executors
 
 internal class AuthContextTest : StringSpec({
@@ -111,10 +111,10 @@ internal class AuthContextTest : StringSpec({
         shouldThrow<UnsupportedOperationException> {
             object : AuthContext {
                 override val accessKey: AccessKey
-                    get() = TODO("Not yet implemented")
+                    get() = throw UnsupportedOperationException()
 
                 override suspend fun getToken(): AuthToken? {
-                    TODO("Not yet implemented")
+                    throw UnsupportedOperationException()
                 }
             }.asClearable()
         }
@@ -126,5 +126,13 @@ internal class AuthContextTest : StringSpec({
     "should be the same instance when safe-ing an non clearable auth context " {
         val context = mockk<AuthContext>(relaxed = true)
         context.safe() shouldBe context
+    }
+
+    "should be the diff instance when safe-ing an non clearable auth context " {
+        val context = CachedAuthContext(mockk(relaxed = true), "foo")
+        val safe = context.safe()
+        safe shouldNotBeSameInstanceAs context
+        safe.getToken().shouldNotBeNull()
+        safe.accessKey shouldBe "foo"
     }
 })

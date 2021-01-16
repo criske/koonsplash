@@ -72,11 +72,13 @@ internal class LinkTest : StringSpecIT({
 
     "should create the correct links" {
         val apiLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/").toString(), mockk())
+        val apiLinkNoPath = Link.create(HttpClient.apiBaseUrl.resolve("/").toString(), mockk())
         val browseLink = Link.create("http://example.xyz/", mockk())
         val downloadLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/download").toString(), mockk())
         val photoLink = Link.create(HttpClient.imagesBaseUrl.resolve("/foo/bar/").toString(), mockk())
 
         apiLink.shouldBeInstanceOf<Link.Api>()
+        apiLinkNoPath.shouldBeInstanceOf<Link.Api>()
         browseLink.shouldBeInstanceOf<Link.Browser>()
         downloadLink.shouldBeInstanceOf<Link.Download>()
         photoLink.shouldBeInstanceOf<Link.Photo>()
