@@ -10,7 +10,8 @@ Unofficial client side Kotlin wrapper for Unsplash API.
 runBlocking {
     val api = Koonsplash.builder("my-access-key-client-id")
                 .openLinksStrategy {
-                    //if _openLinksStrategy_ is not set. Koonsplash will try to open browser or photo links using os terminal.
+                    //if _openLinksStrategy_ is not set. Koonsplash will try to open browser 
+                    //or photo links using os terminal.
                     Desptop.browse(it)
                     Result.success(Unit)
                 }
