@@ -67,9 +67,10 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
         @PublishedApi
         internal fun create(url: String, context: KoonsplashContext): Link {
             val uri = URI.create(url)
-            return when (uri.authority) {
-                HttpClient.apiBaseUrl.authority -> {
-                    val path = uri.path?.takeIf { it != "/" }
+            val authority = uri.authority
+            return when {
+                authority.contains(HttpClient.apiBaseUrl.authority) -> {
+                    val path = uri.path!!.takeIf { it.isNotEmpty() && it != "/" }
                     if (path != null) {
                         if (path.endsWith("download")) {
                             Download(uri, context = context)
@@ -80,7 +81,7 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
                         Browser(uri, context)
                     }
                 }
-                HttpClient.imagesBaseUrl.authority -> Photo(uri, context)
+                authority.contains(HttpClient.imagesBaseUrl.authority) -> Photo(uri, context)
                 else -> Browser(uri, context)
             }
         }
@@ -285,11 +286,7 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
              *
              * @return Link
              */
-            fun asDownloadLink(): Download = Link.Download(
-                this.url(),
-                Download.Policy.IMGIX,
-                this.context
-            )
+            fun asDownloadLink(): Download = Link.Download(this.url(), Download.Policy.IMGIX, this.context)
 
             /**
              * As photo link.

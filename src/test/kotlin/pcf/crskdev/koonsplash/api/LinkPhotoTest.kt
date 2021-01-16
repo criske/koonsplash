@@ -50,20 +50,25 @@ internal class LinkPhotoTest : StringSpec({
     }
 
     "should apply resize" {
-        Link.Photo(baseUrl.toUri(), mockk())
+        val resize = Link.Photo(baseUrl.toUri(), mockk())
             .resize {
                 fm(ResizeDSL.Scope.Fm.JPG)
                 safeCrop(500u, ResizeDSL.Scope.Crop.FACES)
                 80u.q
             }
-            .asPhotoLink()
-            .url shouldBe baseUrl.buildQueries {
+        val toUri = baseUrl.buildQueries {
             addQueryParameter("fm", "jpg")
             addQueryParameter("w", "500")
             addQueryParameter("h", "500")
             addQueryParameter("fit", "crop")
             addQueryParameter("crop", "faces")
         }.toUri()
+        resize
+            .asPhotoLink()
+            .url shouldBe toUri
+        resize
+            .asDownloadLink()
+            .url shouldBe toUri
     }
 
     "should overwrite resize from base url" {

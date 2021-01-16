@@ -42,6 +42,9 @@ internal class KoonsplashContextTest : StringSpec({
             context.auth.accessKey
         }
         shouldThrow<IllegalStateException> {
+            context.auth.getToken()
+        }
+        shouldThrow<IllegalStateException> {
             context.browserLauncher.launch(URI.create("/"))
         }
     }
