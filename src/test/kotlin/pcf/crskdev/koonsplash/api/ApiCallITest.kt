@@ -43,7 +43,7 @@ import pcf.crskdev.koonsplash.util.toFile
 import java.util.concurrent.TimeUnit
 
 @ExperimentalCoroutinesApi
-internal class ApiCallImplTest : StringSpecIT({
+internal class ApiCallITest : StringSpecIT({
 
     val api = ApiImpl(
         HttpClient.http,

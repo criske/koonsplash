@@ -53,5 +53,10 @@ val resizedPhoto = photo.resize{
 val saved: Link.Browser = resizedPhoto.download(File("<path>"), "my-resized-photo")
 saved.open()
 ```
-
+**Cancelling a request**
+```kotlin
+val cancelFlow = cancelButton.clicks().map { Unit } 
+val photo = api.call("/photos/random").cancelable(cancelFlow, uiScope)
+//now pressing the supposed button will cancel the request.
+```
 **Work in progress...**
