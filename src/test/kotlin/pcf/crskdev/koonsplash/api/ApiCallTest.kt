@@ -86,7 +86,7 @@ internal class ApiCallTest : StringSpec({
         }
     }
 
-    "should cancel execute" {
+    "should cancel execute manually" {
         val call = mockk<ApiCall>()
         val flow = flow {
             emit(ApiCall.Status.Starting())
@@ -120,6 +120,30 @@ internal class ApiCallTest : StringSpec({
                 )
                 cancel()
             }
+        }
+    }
+
+    "should cancel execute due to error" {
+        val call = mockk<ApiCall>()
+        val transformer: (ApiCall.Response) -> String = { "" }
+        val flow = flow {
+            emit(ApiCall.Status.Canceled<String>(IllegalStateException()))
+        }
+        every { call.execute(any(), any(), transformer) } returns flow
+
+        val cancelSignal = MutableSharedFlow<Unit>()
+        val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
+        launch {
+            launch {
+                val statuses = result.toList()
+                    .groupingBy { it.javaClass.simpleName }
+                    .eachCount()
+                statuses shouldBe mapOf(
+                    "Cancel" to 1,
+                )
+                cancelSignal.subscriptionCount.value shouldBe 0
+            } // collecting is done
+            cancel()
         }
     }
 
