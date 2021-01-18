@@ -55,8 +55,40 @@ saved.open()
 ```
 **Cancelling a request**
 ```kotlin
-val cancelFlow = cancelButton.clicks().map { Unit } 
-val photo = api.call("/photos/random").cancelable(cancelFlow, uiScope)
-//now pressing the supposed button will cancel the request.
+val cancelButton = MutableSharedFlow<Unit>()
+launch {
+   val photo = api.call("/photos/random").cancelable(cancelFlow)
+   if(photo != null){
+     val link: Link.Download = photo["links"]["download_location"]()
+     //...
+   }else{
+     //request was manually canceled
+     showMessage("Canceled")
+   }
+}
+launch {
+   api.call("/photos/random")
+        .cancelableExecute(cancelFlow)
+        .collect{ status ->
+            when (status) {
+                is ApiCall.Status.Starting -> showProgressBar()
+                is ApiCall.Status.Current -> updateProgressBar(status.value)
+                is ApiCall.Status.Done -> {
+                    hideProgressBar()
+                    val photo = status.resource()
+                    //....
+                }
+                is ApiCall.Status.Canceled -> {
+                    hideProgressBar()
+                    showMessage("Canceled")
+                }           
+            }
+        }
+}
+//pressing the supposed button will cancel the request.
+launch {
+    delay(1000)
+    cancelButton.emit(Unit)
+}
 ```
 **Work in progress...**

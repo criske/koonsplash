@@ -29,13 +29,12 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runBlockingTest
@@ -47,18 +46,20 @@ internal class ApiCallTest : StringSpec({
     "should cancel request" {
         val call = mockk<ApiCall>()
         coEvery { call.invoke(any()) } coAnswers {
-            delay(5000)
-            ApiJsonResponse(mockk(), mockk(), emptyMap())
+            delay(1000)
+            ApiJsonResponse(mockk(), StringReader("[]"), emptyMap())
         }
-
-        val channel = Channel<Unit>()
         launch {
-            delay(100)
-            channel.offer(Unit)
+            val cancelSignal = MutableSharedFlow<Unit>()
+            launch {
+                delay(300)
+                cancelSignal.emit(Unit)
+            }
+            val result = call.cancelable(cancelSignal, this)
+            result.shouldBeNull()
+            cancelSignal.subscriptionCount.value shouldBe 0
+            this.cancel()
         }
-
-        val result = call.cancelable(channel.receiveAsFlow(), this)
-        result.shouldBeNull()
     }
 
     "should not cancel request" {
@@ -66,9 +67,13 @@ internal class ApiCallTest : StringSpec({
         coEvery { call.invoke(any()) } coAnswers {
             ApiJsonResponse(mockk(), StringReader("[]"), emptyMap())
         }
-
-        val result = call.cancelable(emptyFlow(), this)
-        result.shouldNotBeNull()
+        launch {
+            val cancelSignal = MutableSharedFlow<Unit>()
+            val result = call.cancelable(cancelSignal)
+            result.shouldNotBeNull()
+            cancelSignal.subscriptionCount.value shouldBe 0
+            this.cancel()
+        }
     }
 
     "should throw if something goes wrong with request" {
@@ -76,13 +81,12 @@ internal class ApiCallTest : StringSpec({
         coEvery { call.invoke(any()) } coAnswers {
             throw IllegalStateException()
         }
-
         shouldThrow<IllegalStateException> {
-            call.cancelable(emptyFlow(), this)
+            call.cancelable(MutableSharedFlow(), this)
         }
     }
 
-    "should cancel execute" {
+    "should cancel execute manually" {
         val call = mockk<ApiCall>()
         val flow = flow {
             emit(ApiCall.Status.Starting())
@@ -94,29 +98,51 @@ internal class ApiCallTest : StringSpec({
         }
         every { call.execute(any()) } returns flow
 
+        val cancelSignal = MutableSharedFlow<Unit>()
+        val result = call.cancelableExecute(cancelSignal, emptyList())
         runBlockingTest {
-            val channel = Channel<Unit>()
-            val result = call.cancelableExecute(
-                channel.receiveAsFlow(),
-                Dispatchers.Unconfined,
-                emptyList()
-            )
-
-            pauseDispatcher()
             launch {
-                delay(3000)
-                channel.offer(Unit)
+                pauseDispatcher()
+                launch {
+                    delay(3000)
+                    cancelSignal.emit(Unit)
+                }
+                val statuses = result.toList()
+                    .groupingBy { it.javaClass.simpleName }
+                    .eachCount()
+                advanceTimeBy(12000)
+                resumeDispatcher()
+                cancelSignal.subscriptionCount.value shouldBe 0
+                statuses shouldBe mapOf(
+                    "Starting" to 1,
+                    "Current" to 3,
+                    "Canceled" to 1
+                )
+                cancel()
             }
+        }
+    }
+
+    "should cancel execute due to error" {
+        val call = mockk<ApiCall>()
+        val transformer: (ApiCall.Response) -> String = { "" }
+        val flow = flow {
+            delay(100)
+            emit(ApiCall.Status.Canceled<String>(IllegalStateException()))
+        }
+        every { call.execute(any(), any(), transformer) } returns flow
+
+        val cancelSignal = MutableSharedFlow<Unit>()
+        val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
+        launch {
             val statuses = result.toList()
                 .groupingBy { it.javaClass.simpleName }
                 .eachCount()
-            advanceTimeBy(12000)
-            resumeDispatcher()
             statuses shouldBe mapOf(
-                "Starting" to 1,
-                "Current" to 3,
-                "Canceled" to 1
+                "Canceled" to 1,
             )
+            cancelSignal.subscriptionCount.value shouldBe 0
+            cancel()
         }
     }
 
@@ -127,30 +153,31 @@ internal class ApiCallTest : StringSpec({
             emit(ApiCall.Status.Starting())
             for (i in 1..10) {
                 emit(ApiCall.Status.Current(i, 10L))
-                delay(1000)
             }
             emit(ApiCall.Status.Done(""))
         }
         every { call.execute(any(), any(), transformer) } returns flow
 
-        runBlockingTest {
-            val result = call.cancelableExecute(
-                emptyFlow(),
-                Dispatchers.Unconfined,
-                emptyList(),
-                transformer = transformer
-            )
-            pauseDispatcher()
-            val statuses = result.toList()
-                .groupingBy { it.javaClass.simpleName }
-                .eachCount()
-            advanceTimeBy(12000)
-            resumeDispatcher()
-            statuses shouldBe mapOf(
-                "Starting" to 1,
-                "Current" to 10,
-                "Done" to 1
-            )
+        val cancelSignal = MutableSharedFlow<Unit>()
+        val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
+        launch {
+            launch {
+                // simulate that is used by other request too
+                cancelSignal.collect {}
+            }
+            launch {
+                val statuses = result.toList()
+                    .groupingBy { it.javaClass.simpleName }
+                    .eachCount()
+                statuses shouldBe mapOf(
+                    "Starting" to 1,
+                    "Current" to 10,
+                    "Done" to 1
+                )
+                // this subscription is done, it should remain the above open one.
+                cancelSignal.subscriptionCount.value shouldBe 1
+            }.join() // collecting is done
+            cancel()
         }
     }
 })
