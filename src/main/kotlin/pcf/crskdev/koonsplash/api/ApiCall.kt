@@ -23,18 +23,14 @@ package pcf.crskdev.koonsplash.api
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -249,23 +245,27 @@ fun <T> ApiCall.cancelableExecute(
 private fun <T> cancelableExecuteWithProvider(
     cancelSignal: SharedFlow<Unit?>,
     provider: () -> Flow<ApiCall.Status<T>>
-): Flow<ApiCall.Status<T>> = provider()
-    .combine(cancelSignal.onStart { emit(null) }) { status, cancel ->
-        status to cancel
-    }
-    .transformWhile { combined ->
-        val isManuallyCanceled = combined.second != null
-        val isDone = combined.first is ApiCall.Status.Canceled || combined.first is ApiCall.Status.Done
-        if (isManuallyCanceled) {
-            emit(ApiCall.Status.Canceled<T>(CancellationException("Manually cancelled")))
-        } else {
-            emit(combined.first)
+): Flow<ApiCall.Status<T>> = channelFlow {
+    val provideJob = launch {
+        provider().collect {
+            send(it)
+            val isFinished = it is ApiCall.Status.Canceled || it is ApiCall.Status.Done
+            if (isFinished) {
+                close()
+            }
         }
-        if (isDone || isManuallyCanceled) {
-            currentCoroutineContext().cancel()
-        }
-        !isManuallyCanceled || !isDone
     }
+    val cancelJob = launch {
+        cancelSignal.collect {
+            send(ApiCall.Status.Canceled<T>(CancellationException("Manually canceled")))
+            provideJob.cancel()
+            close()
+        }
+    }
+    awaitClose {
+        cancelJob.cancel()
+    }
+}
 
 /**
  * API call impl.

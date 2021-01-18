@@ -127,6 +127,7 @@ internal class ApiCallTest : StringSpec({
         val call = mockk<ApiCall>()
         val transformer: (ApiCall.Response) -> String = { "" }
         val flow = flow {
+            delay(100)
             emit(ApiCall.Status.Canceled<String>(IllegalStateException()))
         }
         every { call.execute(any(), any(), transformer) } returns flow
@@ -134,15 +135,13 @@ internal class ApiCallTest : StringSpec({
         val cancelSignal = MutableSharedFlow<Unit>()
         val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
         launch {
-            launch {
-                val statuses = result.toList()
-                    .groupingBy { it.javaClass.simpleName }
-                    .eachCount()
-                statuses shouldBe mapOf(
-                    "Cancel" to 1,
-                )
-                cancelSignal.subscriptionCount.value shouldBe 0
-            } // collecting is done
+            val statuses = result.toList()
+                .groupingBy { it.javaClass.simpleName }
+                .eachCount()
+            statuses shouldBe mapOf(
+                "Canceled" to 1,
+            )
+            cancelSignal.subscriptionCount.value shouldBe 0
             cancel()
         }
     }
@@ -177,7 +176,7 @@ internal class ApiCallTest : StringSpec({
                 )
                 // this subscription is done, it should remain the above open one.
                 cancelSignal.subscriptionCount.value shouldBe 1
-            } // collecting is done
+            }.join() // collecting is done
             cancel()
         }
     }
