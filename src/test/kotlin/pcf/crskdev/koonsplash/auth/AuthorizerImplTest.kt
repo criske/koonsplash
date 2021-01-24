@@ -78,13 +78,11 @@ internal class AuthorizerImplTest : StringSpecIT({
             AuthScope.PUBLIC,
         )
 
-        token shouldBe AuthToken(
-            "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044",
-            "bearer",
-            "",
-            AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS,
-            1436544465
-        )
+        token.accessToken shouldBe "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044"
+        token.tokenType shouldBe "bearer"
+        token.refreshToken shouldBe ""
+        token.scope shouldBe AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS
+        token.createdAt shouldBe 1436544465
     }
 
     "should fail launching the browser" {
