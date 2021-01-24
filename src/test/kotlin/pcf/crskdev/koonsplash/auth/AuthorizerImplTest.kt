@@ -49,6 +49,7 @@ internal class AuthorizerImplTest : StringSpecIT({
                          {
                            "access_token": "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044",
                            "token_type": "bearer",
+                           "refresh_token": "",
                            "scope": "public read_photos write_photos",
                            "created_at": 1436544465
                          }
@@ -69,7 +70,7 @@ internal class AuthorizerImplTest : StringSpecIT({
                 return Result.success(Unit)
             }
         }
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
+        val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { _, _ -> codeServer }
 
         val token = authorizer.authorize(
             "123",
@@ -94,7 +95,7 @@ internal class AuthorizerImplTest : StringSpecIT({
                 return Result.failure(IllegalStateException("Failed to launch"))
             }
         }
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
+        val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { _, _ -> codeServer }
 
         shouldThrow<IllegalStateException> {
             authorizer.authorize(
@@ -112,7 +113,7 @@ internal class AuthorizerImplTest : StringSpecIT({
                 return Result.success(Unit)
             }
         }
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { _, _ -> codeServer }
+        val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { _, _ -> codeServer }
 
         shouldThrow<TimeoutCancellationException> {
             runBlockingTest {

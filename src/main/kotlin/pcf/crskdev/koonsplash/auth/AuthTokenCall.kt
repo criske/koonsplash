@@ -21,22 +21,21 @@
 
 package pcf.crskdev.koonsplash.auth
 
-import okhttp3.CacheControl
-import okhttp3.FormBody
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.Request
+import pcf.crskdev.koonsplash.api.ApiCall
+import pcf.crskdev.koonsplash.api.ApiCallImpl
+import pcf.crskdev.koonsplash.api.Endpoint
+import pcf.crskdev.koonsplash.api.Verb
 import pcf.crskdev.koonsplash.http.HttpClient
-import pcf.crskdev.koonsplash.http.HttpClient.executeCo
-import pcf.crskdev.koonsplash.http.HttpClient.jsonBody
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.net.URI
 
 /**
- * OAuth2 Unsplash calls abstraction.
+ * OAuth2 Unsplash create token abstraction.
  *
  * @author Cristian Pela
  * @since 0.1
  */
-internal interface AuthApiCall {
+internal interface AuthTokenCall {
 
     /**
      * Request for authentication token.
@@ -60,7 +59,7 @@ internal interface AuthApiCall {
  *
  * @constructor Create empty Auth api call impl
  */
-internal class AuthApiCallImpl : AuthApiCall {
+internal class AuthTokenCallImpl : AuthTokenCall {
 
     override suspend fun token(
         authorizationCode: AuthorizationCode,
@@ -68,25 +67,33 @@ internal class AuthApiCallImpl : AuthApiCall {
         secretKey: SecretKey,
         redirectUri: URI
     ): AuthToken {
-        val authTokenForm = FormBody.Builder()
-            .add("client_id", accessKey)
-            .add("client_secret", secretKey.concatToString())
-            .add("redirect_uri", redirectUri.toString())
-            .add("code", authorizationCode)
-            .add("grant_type", "authorization_code")
-            .build()
-        val request = Request.Builder()
-            .url(
-                HttpClient.baseUrl.toHttpUrlOrNull()!!
-                    .newBuilder()
-                    .addPathSegment("oauth")
-                    .addPathSegment("token")
-                    .build()
-            )
-            .cacheControl(CacheControl.FORCE_NETWORK)
-            .post(authTokenForm)
-            .build()
 
-        return HttpClient.http.newCall(request).executeCo().jsonBody()
+        val apiCall: ApiCall = ApiCallImpl(
+            Endpoint(
+                HttpClient.baseUrl.toString(),
+                "/oauth/token",
+                Verb.Modify.Post(
+                    "client_id" to accessKey,
+                    "client_secret" to secretKey.concatToString(),
+                    "redirect_uri" to redirectUri.toString(),
+                    "code" to authorizationCode,
+                    "grant_type" to "authorization_code"
+                )
+            ),
+            HttpClient.http,
+            KoonsplashContext.Builder()
+                .auth { AuthContext.None(accessKey) }
+                .build()
+        )
+
+        return apiCall().let {
+            AuthToken(
+                it["access_token"](),
+                it["token_type"](),
+                it["refresh_token"](),
+                AuthScope.decode(it["scope"]()),
+                it["created_at"]()
+            )
+        }
     }
 }

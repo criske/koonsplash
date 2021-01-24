@@ -33,14 +33,14 @@ import kotlin.time.ExperimentalTime
 
 /**
  * Authorizer implementation for authenticated API requests.
- * @property apiCall Auth Api call for token.
+ * @property tokenCall Auth Api call for token.
  * @property serverFactory Auth code server provider
  * @property browserLauncher Browser launcher.
  **/
 @ExperimentalTime
 @ExperimentalUnsignedTypes
 internal class AuthorizerImpl(
-    private val apiCall: AuthApiCall,
+    private val tokenCall: AuthTokenCall,
     private val browserLauncher: BrowserLauncher,
     private val serverFactory: (String, UInt) -> AuthCodeServer
 ) : Authorizer {
@@ -85,6 +85,6 @@ internal class AuthorizerImpl(
 
         val authorizationCode = withTimeout(timeout) { channel.receive() }
 
-        apiCall.token(authorizationCode, accessKey, secretKey, server.callbackUri)
+        tokenCall.token(authorizationCode, accessKey, secretKey, server.callbackUri)
     }
 }
