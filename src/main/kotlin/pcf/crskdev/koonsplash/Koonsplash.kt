@@ -26,10 +26,10 @@ import kotlinx.coroutines.Dispatchers
 import pcf.crskdev.koonsplash.api.Api
 import pcf.crskdev.koonsplash.api.ApiAuth
 import pcf.crskdev.koonsplash.auth.AccessKey
-import pcf.crskdev.koonsplash.auth.AuthApiCallImpl
 import pcf.crskdev.koonsplash.auth.AuthCodeServer
 import pcf.crskdev.koonsplash.auth.AuthCodeServerImpl
 import pcf.crskdev.koonsplash.auth.AuthScope
+import pcf.crskdev.koonsplash.auth.AuthTokenCallImpl
 import pcf.crskdev.koonsplash.auth.AuthTokenStorage
 import pcf.crskdev.koonsplash.auth.AuthorizerImpl
 import pcf.crskdev.koonsplash.auth.BrowserLauncherImpl
@@ -282,7 +282,7 @@ class KoonsplashBuilder internal constructor(
     fun build(): Koonsplash {
         val authContext = CachedAuthContext(this.authTokenStorage, this.accessKey)
         val browserLauncher = BrowserLauncherImpl(externalLauncher = this.openLinksStrategy)
-        val authorizer = AuthorizerImpl(AuthApiCallImpl(), browserLauncher) { host, port ->
+        val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { host, port ->
             AuthCodeServerImpl(AuthCodeServer.createCallback(host, port))
         }
         val koonsplashContext = KoonsplashContext.Builder()

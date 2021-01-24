@@ -34,7 +34,6 @@ import okio.BufferedSource
 import okio.ForwardingSource
 import okio.Source
 import okio.buffer
-import pcf.crskdev.koonsplash.json.JsonClient
 import java.io.IOException
 import java.net.CookieManager
 import java.net.CookiePolicy
@@ -63,20 +62,6 @@ internal object HttpClient {
             )
         )
         .build()
-
-    inline fun <reified T> Response.jsonBody(): T {
-        val isJson = this.body
-            ?.contentType()
-            ?.subtype
-            ?.equals("json", true) == true
-        return if (isJson) {
-            this.body?.charStream()
-                ?.let { JsonClient.json.fromJson(it, T::class.java) }
-                ?: throw IOException("Body is empty")
-        } else {
-            throw IOException("Content Type is not json")
-        }
-    }
 
     /**
      * Coroutine equivalent of Call#execute()
