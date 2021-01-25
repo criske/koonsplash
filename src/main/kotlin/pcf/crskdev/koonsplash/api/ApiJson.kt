@@ -35,13 +35,15 @@ import java.io.Reader
  *
  * @property context: KoonsplashContext
  * @property jsonEl Current json element
+ * @property selector Selector from this ApiJson was created
  * @constructor Create empty Api json
  * @author Cristian Pela
  * @since 0.1
  */
 class ApiJson internal constructor(
     @PublishedApi internal val jsonEl: JsonElement,
-    @PublishedApi internal val context: KoonsplashContext
+    @PublishedApi internal val context: KoonsplashContext,
+    @PublishedApi internal val selector: Selector? = null
 ) {
 
     companion object {
@@ -69,10 +71,18 @@ class ApiJson internal constructor(
     /**
      * Try to get a value of String, Boolean, Number, Link associated with this json key.
      *
+     * @param default Default value if key is not found
      * @param T
      * @return T as accepted value type.
      */
-    inline operator fun <reified T> invoke(): T {
+    inline operator fun <reified T> invoke(default: T? = null): T {
+        if (this.jsonEl is JsonNull) {
+            if (default != null) {
+                return default
+            } else {
+                throw IllegalStateException("JSON-Key not found: \"${this.selector}\"")
+            }
+        }
         val kClass = T::class
         if (Link::class.java.isAssignableFrom(kClass.java)) {
             return Link.create(this.jsonEl.asString, this.context) as T
@@ -129,7 +139,7 @@ class ApiJson internal constructor(
                 "Invalid selector ${selector::class.java}. Only strings or integers are permitted."
             )
         }
-        return ApiJson(element, this.context)
+        return ApiJson(element, this.context, selector)
     }
 
     /**

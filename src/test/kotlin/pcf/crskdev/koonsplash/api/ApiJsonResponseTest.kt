@@ -58,4 +58,15 @@ internal class ApiJsonResponseTest : StringSpec({
     "should print" {
         "[{\"message\":\"Hi\",\"place\":{\"name\":\"World\"}}]" shouldBe response.toString()
     }
+
+    "should show default if key is not found" {
+        response[0]["foo"]("bar") shouldBe "bar"
+    }
+
+    "should throw if no default provided when key is not found" {
+        val err = shouldThrow<IllegalStateException> {
+            response[0]["foo"]()
+        }
+        err.message shouldBe "JSON-Key not found: \"foo\""
+    }
 })
