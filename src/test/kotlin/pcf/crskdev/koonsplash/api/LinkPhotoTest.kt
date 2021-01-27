@@ -24,6 +24,7 @@ package pcf.crskdev.koonsplash.api
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeTypeOf
 import io.mockk.mockk
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -135,5 +136,13 @@ internal class LinkPhotoTest : StringSpec({
             .reset()
             .asPhotoLink().url shouldBe baseUrl
             .toUri()
+    }
+
+    "should convert to browser link" {
+        Link.Photo(baseUrl.toUri(), mockk()).asBrowserLink().shouldBeTypeOf<Link.Browser>()
+    }
+
+    "should resize convert to browser link" {
+        Link.Photo(baseUrl.toUri(), mockk()).resize { }.asBrowserLink().shouldBeTypeOf<Link.Browser>()
     }
 })

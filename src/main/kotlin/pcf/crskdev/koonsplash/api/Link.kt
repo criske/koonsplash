@@ -244,6 +244,13 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
         }
 
         /**
+         * As browser link.
+         *
+         * @return Link.Browser
+         */
+        fun asBrowserLink(): Link.Browser = Link.Browser(this.url, this.context)
+
+        /**
          * Resize logic controller.
          *
          * @property checked Flag that marks if baseUrl was checked for having "ixid" parameters.
@@ -294,6 +301,13 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
              * @return Link.
              */
             fun asPhotoLink(): Photo = Link.Photo(this.url(), this.context)
+
+            /**
+             * As browser link.
+             *
+             * @return Link.Browser
+             */
+            fun asBrowserLink(): Browser = Link.Browser(this.url(), this.context)
 
             /**
              * Add new Resize dsl this one.
