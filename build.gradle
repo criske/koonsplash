@@ -14,9 +14,14 @@ repositories {
     jcenter()
 }
 
+java {
+    withSourcesJar()
+}
+
 configurations {
     ktlint
 }
+
 test {
     useJUnitPlatform()
     testLogging {
