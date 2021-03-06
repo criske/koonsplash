@@ -74,7 +74,7 @@ internal class ApiCallITest : StringSpecIT({
             }
         }
         val apiCall = api.call("/photos/random/{test}?page={number}")
-        val response = apiCall.invoke("test", 1)
+        val response = apiCall.invoke("test", 1, cancel = null)
 
         response["id"]<String>() shouldBe "fgc48MAG3Tk"
     }
