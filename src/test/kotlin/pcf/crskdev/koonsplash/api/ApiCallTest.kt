@@ -21,12 +21,8 @@
 
 package pcf.crskdev.koonsplash.api
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,49 +38,6 @@ import java.io.StringReader
 
 @ExperimentalCoroutinesApi
 internal class ApiCallTest : StringSpec({
-
-    "should cancel request" {
-        val call = mockk<ApiCall>()
-        coEvery { call.invoke(any()) } coAnswers {
-            delay(1000)
-            ApiJsonResponse(mockk(), StringReader("[]"), emptyMap())
-        }
-        launch {
-            val cancelSignal = MutableSharedFlow<Unit>()
-            launch {
-                delay(300)
-                cancelSignal.emit(Unit)
-            }
-            val result = call.cancelable(cancelSignal, this)
-            result.shouldBeNull()
-            cancelSignal.subscriptionCount.value shouldBe 0
-            this.cancel()
-        }
-    }
-
-    "should not cancel request" {
-        val call = mockk<ApiCall>()
-        coEvery { call.invoke(any()) } coAnswers {
-            ApiJsonResponse(mockk(), StringReader("[]"), emptyMap())
-        }
-        launch {
-            val cancelSignal = MutableSharedFlow<Unit>()
-            val result = call.cancelable(cancelSignal)
-            result.shouldNotBeNull()
-            cancelSignal.subscriptionCount.value shouldBe 0
-            this.cancel()
-        }
-    }
-
-    "should throw if something goes wrong with request" {
-        val call = mockk<ApiCall>()
-        coEvery { call.invoke(any()) } coAnswers {
-            throw IllegalStateException()
-        }
-        shouldThrow<IllegalStateException> {
-            call.cancelable(MutableSharedFlow(), this)
-        }
-    }
 
     "should cancel execute manually" {
         val call = mockk<ApiCall>()

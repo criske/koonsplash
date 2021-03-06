@@ -26,6 +26,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
@@ -140,15 +141,16 @@ internal class ApiCallITest : StringSpecIT({
             }
         }
 
+        val cancelSignal = MutableSharedFlow<Unit>()
         val apiCall = api.call("/photos/random/{test}?page={number}")
-        val job = launch {
+        launch {
             shouldThrowAny {
-                apiCall("test", 1)
+                apiCall("test", 1, cancel = cancelSignal)
             }
         }
         launch {
             delay(500)
-            job.cancel("manual cancel", null)
+            cancelSignal.emit(Unit)
         }.join()
     }
 
