@@ -21,8 +21,18 @@
 
 package pcf.crskdev.koonsplash.api
 
+import kotlinx.coroutines.flow.SharedFlow
+
 internal typealias FormEntry = Pair<String, String>
+/**
+ * Type alias for a api endpoint call param. Should be String, Boolean or Integer
+ */
 typealias Param = Any
+
+/**
+ * [SharedFlow] of Unit that cancels the [ApiCall] when emits.
+ */
+typealias CancelSignal = SharedFlow<Unit>
 
 /**
  * Selector for a json response [ApiJsonResponse.ApiJson]. Should be String or Int.

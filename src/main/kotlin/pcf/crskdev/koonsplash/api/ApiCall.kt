@@ -60,12 +60,13 @@ import kotlin.math.roundToInt
 interface ApiCall {
 
     /**
-     * Invoker
+     * Invoker. Can be canceled.
      *
-     * @param param Params
+     * @param cancel Signal that cancel the call. Default null meaning that there is no cancellation.
+     * @param params Params
      * @return [ApiJsonResponse]
      */
-    suspend operator fun invoke(vararg param: Param): ApiJsonResponse
+    suspend operator fun invoke(vararg params: Param, cancel: CancelSignal? = null): ApiJsonResponse
 
     /**
      * Generic execution with observing the call progress.
@@ -81,7 +82,7 @@ interface ApiCall {
         transformer: (Response) -> T
     ): Flow<Status<T>>
 
-    /**
+    /** TODO: make this extension?
      * ApiJsonResponse execution with observing the call progress.
      *
      * @param params Params
@@ -172,34 +173,6 @@ interface ApiCall {
 }
 
 /**
- * Request that get [ApiJsonResponse] can be canceled.
- *
- * @param param Params
- * @param cancelSignal Signals that this request should be canceled
- * @return ApiJsonResponse or null if request was canceled.
- */
-@ExperimentalCoroutinesApi
-suspend fun ApiCall.cancelable(
-    cancelSignal: SharedFlow<Unit>,
-    vararg param: Param,
-): ApiJsonResponse? = coroutineScope {
-    val deferred = async { this@cancelable(param) }
-    val cancelJob = launch {
-        cancelSignal.collect {
-            deferred.cancel()
-        }
-    }
-    deferred.invokeOnCompletion {
-        cancelJob.cancel()
-    }
-    try {
-        deferred.await()
-    } catch (ex: CancellationException) {
-        null
-    }
-}
-
-/**
  * Cancelable execute flow.
  *
  * @param cancelSignal
@@ -282,9 +255,23 @@ internal class ApiCallImpl(
     private val endpointParser = EndpointParser(endpoint)
 
     @ExperimentalCoroutinesApi
-    override suspend fun invoke(vararg param: Param): ApiJsonResponse = coroutineScope {
+    override suspend fun invoke(vararg params: Param, cancel: CancelSignal?): ApiJsonResponse =
+        if (cancel == null) {
+            call(*params)
+        } else {
+            cancelableCall(*params, cancel = cancel)
+        }
+
+    /**
+     * Call without canceling.
+     *
+     * @param param Params
+     * @return
+     */
+    @ExperimentalCoroutinesApi
+    private suspend fun call(vararg param: Param): ApiJsonResponse = coroutineScope {
         produce(coroutineContext) {
-            execute(param.toList()).collect {
+            execute(params = param.toList()).collect {
                 when (it) {
                     is ApiCall.Status.Done<*> ->
                         send(it.resource as ApiJsonResponse)
@@ -295,6 +282,30 @@ internal class ApiCallImpl(
                 }
             }
         }.receive()
+    }
+
+    /**
+     * Call with canceling signal.
+     *
+     * @param param Params
+     * @param cancel Signals that this request should be canceled
+     * @return ApiJsonResponse or null if request was canceled.
+     */
+    @ExperimentalCoroutinesApi
+    private suspend fun cancelableCall(
+        vararg param: Param,
+        cancel: CancelSignal
+    ): ApiJsonResponse = coroutineScope {
+        val deferred = async { call(*param) }
+        val cancelJob = launch {
+            cancel.collect {
+                deferred.cancel()
+            }
+        }
+        deferred.invokeOnCompletion {
+            cancelJob.cancel()
+        }
+        deferred.await()
     }
 
     @ExperimentalCoroutinesApi
