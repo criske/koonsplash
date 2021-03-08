@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021. Pela Cristian
+ *  Copyright (c) 2020. Pela Cristian
  *  Permission is hereby granted, free of charge, to any person obtaining a
  *  copy of this software and associated documentation files (the "Software"),
  *  to deal in the Software without restriction, including without limitation
@@ -21,116 +21,229 @@
 
 package pcf.crskdev.koonsplash.api
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
+import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.runBlockingTest
-import java.io.StringReader
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.mockwebserver.MockResponse
+import pcf.crskdev.koonsplash.auth.AccessKey
+import pcf.crskdev.koonsplash.auth.AuthContext
+import pcf.crskdev.koonsplash.auth.AuthScope
+import pcf.crskdev.koonsplash.auth.AuthToken
+import pcf.crskdev.koonsplash.http.HttpClient
+import pcf.crskdev.koonsplash.internal.KoonsplashContext
+import pcf.crskdev.koonsplash.util.resource
+import pcf.crskdev.koonsplash.util.server
+import pcf.crskdev.koonsplash.util.setBodyFromResource
+import pcf.crskdev.koonsplash.util.toFile
+import java.util.concurrent.TimeUnit
 
 @ExperimentalCoroutinesApi
 internal class ApiCallTest : StringSpec({
 
-    "should cancel execute manually" {
-        val call = mockk<ApiCall>()
-        val flow = flow {
-            emit(ApiCall.Status.Starting())
-            for (i in 1..10) {
-                emit(ApiCall.Status.Current(i, 10L))
-                delay(1000)
-            }
-            emit(ApiCall.Status.Done(ApiJsonResponse(mockk(), StringReader("[]"), emptyMap())))
-        }
-        every { call.execute(any()) } returns flow
+    val api = ApiImpl(
+        HttpClient.http,
+        KoonsplashContext.Builder().auth { AuthContext.None("key_123") }.build()
+    )
 
-        val cancelSignal = MutableSharedFlow<Unit>()
-        val result = call.cancelableExecute(cancelSignal, emptyList())
-        runBlockingTest {
+    val context = KoonsplashContext.Builder().auth {
+        object : AuthContext {
+            override val accessKey: AccessKey
+                get() = "key_123"
+
+            override suspend fun getToken(): AuthToken? =
+                AuthToken("token_123", "bearer", "", AuthScope.ALL, 1L)
+        }
+    }.build()
+
+    "should perform api call" {
+        server {
+            beforeStart {
+                enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json".toMediaType())
+                        .setBodyFromResource("random.json")
+                )
+            }
+
+            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val response = apiCall.invoke("test", 1, cancel = null)
+
+            response["id"]<String>() shouldBe "fgc48MAG3Tk"
+        }
+    }
+
+    "should perform api call with raw progress" {
+
+        server {
+            beforeStart {
+                enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json".toMediaType())
+                        .setBodyFromResource("random.json")
+                )
+            }
+
+            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val statuses = apiCall
+                .execute(listOf("test", 1), progressType = ApiCall.Progress.Raw)
+                .toList()
+
+            statuses.filterIsInstance<ApiCall.Status.Current<*>>()
+                .toList()
+                .map { it.value.toLong() }
+                .maxOrNull() shouldBe resource("random.json").toFile().length()
+        }
+    }
+
+    "should perform api call with percent progress" {
+
+        server {
+            beforeStart {
+                enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json".toMediaType())
+                        .setBodyFromResource("random.json")
+                        .throttleBody(500, 10, TimeUnit.MILLISECONDS)
+                )
+            }
+
+            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val statuses = apiCall
+                .execute(listOf("test", 1), progressType = ApiCall.Progress.Percent)
+                .toList()
+
+            statuses.filterIsInstance<ApiCall.Status.Current<*>>()
+                .toList()
+                .map { it.value.toInt() }
+                .maxOrNull() shouldBe 100
+        }
+    }
+
+    "should cancel api call" {
+        server {
+            beforeStart {
+                MockResponse()
+                    .setResponseCode(200)
+                    .setHeader("Content-Type", "application/json".toMediaType())
+                    .setBodyFromResource("random.json")
+                    .throttleBody(100, 1, TimeUnit.SECONDS)
+            }
+
+            val cancelSignal = MutableSharedFlow<Unit>()
+            val apiCall = api.call("/photos/random/{test}?page={number}")
             launch {
-                pauseDispatcher()
-                launch {
-                    delay(3000)
-                    cancelSignal.emit(Unit)
+                shouldThrow<CancellationException> {
+                    apiCall("test", 1, cancel = cancelSignal)
                 }
-                val statuses = result.toList()
-                    .groupingBy { it.javaClass.simpleName }
-                    .eachCount()
-                advanceTimeBy(12000)
-                resumeDispatcher()
-                cancelSignal.subscriptionCount.value shouldBe 0
-                statuses shouldBe mapOf(
-                    "Starting" to 1,
-                    "Current" to 3,
-                    "Canceled" to 1
-                )
-                cancel()
+            }
+            launch {
+                delay(500)
+                cancelSignal.emit(Unit)
             }
         }
     }
 
-    "should cancel execute due to error" {
-        val call = mockk<ApiCall>()
-        val transformer: (ApiCall.Response) -> String = { "" }
-        val flow = flow {
-            delay(100)
-            emit(ApiCall.Status.Canceled<String>(IllegalStateException()))
-        }
-        every { call.execute(any(), any(), transformer) } returns flow
-
-        val cancelSignal = MutableSharedFlow<Unit>()
-        val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
-        launch {
-            val statuses = result.toList()
-                .groupingBy { it.javaClass.simpleName }
-                .eachCount()
-            statuses shouldBe mapOf(
-                "Canceled" to 1,
-            )
-            cancelSignal.subscriptionCount.value shouldBe 0
-            cancel()
+    "should cancel call with percent progress" {
+        server {
+            beforeStart {
+                enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json".toMediaType())
+                        .setBodyFromResource("random.json")
+                        .throttleBody(10, 1, TimeUnit.SECONDS)
+                )
+            }
+            val cancelSignal = MutableSharedFlow<Unit>()
+            val apiCall = api.call("/photos/random/{test}?page={number}")
+            launch {
+                apiCall.execute(listOf("test", 1), cancel = cancelSignal, progressType = ApiCall.Progress.Percent)
+                    .toList()[1].shouldBeInstanceOf<ApiCall.Status.Canceled<ApiJsonResponse>>()
+            }
+            launch {
+                delay(500)
+                cancelSignal.emit(Unit)
+            }
         }
     }
 
-    "should not cancel execute" {
-        val call = mockk<ApiCall>()
-        val transformer: (ApiCall.Response) -> String = { "" }
-        val flow = flow {
-            emit(ApiCall.Status.Starting())
-            for (i in 1..10) {
-                emit(ApiCall.Status.Current(i, 10L))
-            }
-            emit(ApiCall.Status.Done(""))
-        }
-        every { call.execute(any(), any(), transformer) } returns flow
+    "should post a resource" {
 
-        val cancelSignal = MutableSharedFlow<Unit>()
-        val result = call.cancelableExecute(cancelSignal, emptyList(), transformer = transformer)
-        launch {
-            launch {
-                // simulate that is used by other request too
-                cancelSignal.collect {}
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(204))
             }
-            launch {
-                val statuses = result.toList()
-                    .groupingBy { it.javaClass.simpleName }
-                    .eachCount()
-                statuses shouldBe mapOf(
-                    "Starting" to 1,
-                    "Current" to 10,
-                    "Done" to 1
-                )
-                // this subscription is done, it should remain the above open one.
-                cancelSignal.subscriptionCount.value shouldBe 1
-            }.join() // collecting is done
-            cancel()
+            ApiCallImpl(
+                Endpoint(
+                    HttpClient.apiBaseUrl.toString(),
+                    "/me",
+                    Verb.Modify.Post("username" to "foo")
+                ),
+                HttpClient.http,
+                context
+            )()
+            with(takeRequest()) {
+                method shouldBe "POST"
+                headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
+                body.toString() shouldBe "[text=username=foo]"
+            }
+        }
+    }
+
+    "should put a resource" {
+
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(204))
+            }
+            ApiCallImpl(
+                Endpoint(
+                    HttpClient.apiBaseUrl.toString(),
+                    "/me",
+                    Verb.Modify.Put("username" to "foo")
+                ),
+                HttpClient.http,
+                context
+            )()
+            with(takeRequest()) {
+                method shouldBe "PUT"
+                headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
+                body.toString() shouldBe "[text=username=foo]"
+            }
+        }
+    }
+
+    "should delete a resource" {
+
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(204))
+            }
+            ApiCallImpl(
+                Endpoint(
+                    HttpClient.apiBaseUrl.toString(),
+                    "/me",
+                    Verb.Delete
+                ),
+                HttpClient.http,
+                context
+            )()
+
+            with(takeRequest()) {
+                method shouldBe "DELETE"
+                headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
+            }
         }
     }
 })

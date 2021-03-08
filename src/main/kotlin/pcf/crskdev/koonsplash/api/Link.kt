@@ -167,7 +167,7 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
             return when (policy) {
                 Policy.UNSPLASH ->
                     this.context.apiCaller(url.toString())
-                        .execute(emptyList(), ApiCall.Progress.Ignore)
+                        .execute(emptyList(), progressType = ApiCall.Progress.Ignore)
                         .flatMapConcat {
                             when (it) {
                                 is ApiCall.Status.Done -> {

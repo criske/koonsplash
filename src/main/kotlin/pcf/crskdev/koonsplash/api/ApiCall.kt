@@ -27,7 +27,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
@@ -69,28 +68,32 @@ interface ApiCall {
     suspend operator fun invoke(vararg params: Param, cancel: CancelSignal? = null): ApiJsonResponse
 
     /**
-     * Generic execution with observing the call progress.
+     * Generic execution with observing the call progress. Can be canceled.
      *
      * @param params Params
      * @param progressType Progress Type default [Progress.Ignore]
+     * @param cancel Signal that cancel the call. Default null meaning that there is no cancellation.
      * @param transformer Transforms a successful response stream to [T]
      * @return ProgressStatus stream
      */
     fun <T> execute(
         params: List<Param>,
         progressType: Progress = Progress.Ignore,
+        cancel: CancelSignal? = null,
         transformer: (Response) -> T
     ): Flow<Status<T>>
 
     /** TODO: make this extension?
-     * ApiJsonResponse execution with observing the call progress.
+     * ApiJsonResponse execution with observing the call progress. Can be canceled.
      *
      * @param params Params
      * @param progressType Progress Type default [Progress.Ignore]
+     * @param cancel Signal that cancel the call. Default null meaning that there is no cancellation.
      * @return ProgressStatus stream
      */
     fun execute(
         params: List<Param>,
+        cancel: CancelSignal? = null,
         progressType: Progress = Progress.Ignore
     ): Flow<Status<ApiJsonResponse>>
 
@@ -173,74 +176,6 @@ interface ApiCall {
 }
 
 /**
- * Cancelable execute flow.
- *
- * @param cancelSignal
- * @param params
- * @param progressType
- * @return Flow of ApiJsonResponse status.
- */
-@ExperimentalCoroutinesApi
-fun ApiCall.cancelableExecute(
-    cancelSignal: SharedFlow<Unit?>,
-    params: List<Param>,
-    progressType: ApiCall.Progress = ApiCall.Progress.Ignore
-): Flow<ApiCall.Status<ApiJsonResponse>> = cancelableExecuteWithProvider(cancelSignal) {
-    this.execute(params, progressType)
-}
-
-/**
- * Cancelable execute flow.
- *
- * @param cancelSignal
- * @param progressType
- * @param transformer Transforms a successful response stream to [T]
- * @return Flow of ApiJsonResponse status.
- */
-@ExperimentalCoroutinesApi
-fun <T> ApiCall.cancelableExecute(
-    cancelSignal: SharedFlow<Unit?>,
-    params: List<Param>,
-    progressType: ApiCall.Progress = ApiCall.Progress.Ignore,
-    transformer: (ApiCall.Response) -> T
-): Flow<ApiCall.Status<T>> = cancelableExecuteWithProvider(cancelSignal) {
-    this.execute(params, progressType, transformer)
-}
-
-/**
- * Cancelable execute flow.
- *
- * @param cancelSignal
- * @param provider: Provider of [ApiCall#execute] strategy.
- * @return Flow of ApiJsonResponse status.
- */
-@ExperimentalCoroutinesApi
-private fun <T> cancelableExecuteWithProvider(
-    cancelSignal: SharedFlow<Unit?>,
-    provider: () -> Flow<ApiCall.Status<T>>
-): Flow<ApiCall.Status<T>> = channelFlow {
-    val provideJob = launch {
-        provider().collect {
-            send(it)
-            val isFinished = it is ApiCall.Status.Canceled || it is ApiCall.Status.Done
-            if (isFinished) {
-                close()
-            }
-        }
-    }
-    val cancelJob = launch {
-        cancelSignal.collect {
-            send(ApiCall.Status.Canceled<T>(CancellationException("Manually canceled")))
-            provideJob.cancel()
-            close()
-        }
-    }
-    awaitClose {
-        cancelJob.cancel()
-    }
-}
-
-/**
  * API call impl.
  *
  * @property httpClient Http client
@@ -309,7 +244,34 @@ internal class ApiCallImpl(
     }
 
     @ExperimentalCoroutinesApi
-    override fun <T> execute(
+    private fun <T> cancelableExecute(
+        params: List<Param>,
+        progressType: ApiCall.Progress,
+        cancel: CancelSignal,
+        transformer: (ApiCall.Response) -> T
+    ): Flow<ApiCall.Status<T>> = channelFlow {
+        val provideJob = launch {
+            execute(params, progressType, transformer).collect {
+                send(it)
+                val isFinished = it is ApiCall.Status.Canceled || it is ApiCall.Status.Done
+                if (isFinished) {
+                    close()
+                }
+            }
+        }
+        val cancelJob = launch {
+            cancel.collect {
+                send(ApiCall.Status.Canceled<T>(CancellationException("Manually canceled")))
+                provideJob.cancel()
+                close()
+            }
+        }
+        awaitClose {
+            cancelJob.cancel()
+        }
+    }
+    @ExperimentalCoroutinesApi
+    private fun <T> execute(
         params: List<Param>,
         progressType: ApiCall.Progress,
         transformer: (ApiCall.Response) -> T
@@ -396,11 +358,24 @@ internal class ApiCallImpl(
     }
 
     @ExperimentalCoroutinesApi
+    override fun <T> execute(
+        params: List<Param>,
+        progressType: ApiCall.Progress,
+        cancel: CancelSignal?,
+        transformer: (ApiCall.Response) -> T
+    ): Flow<ApiCall.Status<T>> = if (cancel == null) {
+        execute(params, progressType, transformer)
+    } else {
+        cancelableExecute(params, progressType, cancel, transformer)
+    }
+
+    @ExperimentalCoroutinesApi
     override fun execute(
         params: List<Param>,
+        cancel: CancelSignal?,
         progressType: ApiCall.Progress
     ): Flow<ApiCall.Status<ApiJsonResponse>> =
-        execute(params, progressType) { response ->
+        execute(params, progressType, cancel) { response ->
             val jsonReader = response.reader
             val contextWithApiCaller = context.newBuilder()
                 .apiCaller { ApiCallImpl(Endpoint(it), httpClient, context) }

@@ -28,6 +28,8 @@ import io.kotest.core.spec.style.scopes.Lifecycle
 import io.kotest.core.spec.style.scopes.RootTestRegistration
 import io.kotest.core.spec.style.scopes.StringSpecScope
 import io.kotest.core.test.TestCaseConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -122,3 +124,70 @@ abstract class StringSpecIT(body: StringSpecIT.() -> Unit = {}) : DslDrivenSpec(
     override fun defaultConfig(): TestCaseConfig = resolvedDefaultConfig()
     override fun registration(): RootTestRegistration = RootTestRegistration.from(this)
 }
+
+/**
+ * CoroutineScope extension that Creates a new [MockWebServer].
+ * After coroutines are finished the server will close.
+ *
+ * @param body Scope.
+ * @receiver MockWebServerScope
+ */
+fun CoroutineScope.server(body: suspend MockWebServerScope.() -> Unit) {
+
+    val server = MockWebServer()
+
+    class BeforeStartScopeImpl : BeforeStartScope {
+        override fun enqueue(response: MockResponse) {
+            server.enqueue(response)
+        }
+        override fun dispatcher(block: (RecordedRequest) -> MockResponse) {
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse =
+                    block(request)
+            }
+        }
+    }
+
+    class MockWebServerScopeImpl : MockWebServerScope {
+
+        override fun beforeStart(block: BeforeStartScope.() -> Unit) {
+            BeforeStartScopeImpl().apply(block)
+        }
+
+        override fun takeRequest(): RecordedRequest = server.takeRequest()
+    }
+
+    server.run {
+        start()
+        HttpClient.apiBaseUrl = HttpUrl.Builder()
+            .scheme("http")
+            .host(server.hostName)
+            .port(server.port)
+            .build()
+            .toUri()
+        HttpClient.baseUrl = HttpClient.apiBaseUrl
+        launch {
+            MockWebServerScopeImpl().body()
+        }.invokeOnCompletion {
+            server.shutdown()
+        }
+    }
+}
+
+interface MockWebServerScope {
+
+    fun beforeStart(block: BeforeStartScope.() -> Unit)
+
+    fun takeRequest(): RecordedRequest
+}
+
+@MockWebServerMarker
+interface BeforeStartScope {
+
+    fun enqueue(response: MockResponse)
+
+    fun dispatcher(block: (RecordedRequest) -> MockResponse)
+}
+
+@DslMarker
+annotation class MockWebServerMarker
