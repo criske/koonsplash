@@ -22,12 +22,13 @@
 package pcf.crskdev.koonsplash.auth
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.test.runBlockingTest
 import okhttp3.mockwebserver.MockResponse
-import pcf.crskdev.koonsplash.util.StringSpecIT
+import pcf.crskdev.koonsplash.util.server
 import pcf.crskdev.koonsplash.util.withJSONHeader
 import java.net.URI
 import kotlin.time.DurationUnit
@@ -38,51 +39,54 @@ import kotlin.time.toDuration
 @ExperimentalTime
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
-internal class AuthorizerImplTest : StringSpecIT({
+internal class AuthorizerImplTest : StringSpec({
 
     "should authorize and get token" {
-        dispatchable = {
-            val path = this.path ?: ""
-            when {
-                path.contains("token") -> {
-                    val token = """
-                         {
-                           "access_token": "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044",
-                           "token_type": "bearer",
-                           "refresh_token": "",
-                           "scope": "public read_photos write_photos",
-                           "created_at": 1436544465
-                         }
-                    """.trimIndent()
-                    MockResponse()
-                        .withJSONHeader()
-                        .setResponseCode(200)
-                        .setBody(token)
+        server {
+            beforeStart {
+                dispatcher {
+                    val path = it.path ?: ""
+                    when {
+                        path.contains("token") -> {
+                            val token = """
+                             {
+                                "access_token": "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044",
+                                "token_type": "bearer",
+                                "refresh_token": "",
+                                "scope": "public read_photos write_photos",
+                                "created_at": 1436544465
+                             } 
+                             """
+                            MockResponse()
+                                .withJSONHeader()
+                                .setResponseCode(200)
+                                .setBody(token)
+                        }
+                        else -> MockResponse().setResponseCode(400)
+                    }
                 }
-                else -> MockResponse().setResponseCode(400)
             }
-        }
-
-        val codeServer = MockAuthCodeServer()
-        val browserLauncher = object : BrowserLauncher {
-            override fun launch(url: URI): Result<Unit> {
-                codeServer.enqueueCode("123code")
-                return Result.success(Unit)
+            val codeServer = MockAuthCodeServer()
+            val browserLauncher = object : BrowserLauncher {
+                override fun launch(url: URI): Result<Unit> {
+                    codeServer.enqueueCode("123code")
+                    return Result.success(Unit)
+                }
             }
+            val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { _, _ -> codeServer }
+
+            val token = authorizer.authorize(
+                "123",
+                "123".toCharArray(),
+                AuthScope.PUBLIC,
+            )
+
+            token.accessToken shouldBe "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044"
+            token.tokenType shouldBe "bearer"
+            token.refreshToken shouldBe ""
+            token.scope shouldBe AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS
+            token.createdAt shouldBe 1436544465
         }
-        val authorizer = AuthorizerImpl(AuthTokenCallImpl(), browserLauncher) { _, _ -> codeServer }
-
-        val token = authorizer.authorize(
-            "123",
-            "123".toCharArray(),
-            AuthScope.PUBLIC,
-        )
-
-        token.accessToken shouldBe "091343ce13c8ae780065ecb3b13dc903475dd22cb78a05503c2e0c69c5e98044"
-        token.tokenType shouldBe "bearer"
-        token.refreshToken shouldBe ""
-        token.scope shouldBe AuthScope.PUBLIC + AuthScope.READ_PHOTOS + AuthScope.WRITE_PHOTOS
-        token.createdAt shouldBe 1436544465
     }
 
     "should fail launching the browser" {

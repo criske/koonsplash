@@ -21,13 +21,6 @@
 
 package pcf.crskdev.koonsplash.util
 
-import io.kotest.core.spec.DslDrivenSpec
-import io.kotest.core.spec.Spec
-import io.kotest.core.spec.resolvedDefaultConfig
-import io.kotest.core.spec.style.scopes.Lifecycle
-import io.kotest.core.spec.style.scopes.RootTestRegistration
-import io.kotest.core.spec.style.scopes.StringSpecScope
-import io.kotest.core.test.TestCaseConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl
@@ -36,97 +29,9 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import pcf.crskdev.koonsplash.http.HttpClient
-import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
 /**
- * Custom [StringSpec] that uses a [MockWebServer] for remote integration tests.
- *
- * @constructor
- *
- * @param body
- */
-abstract class StringSpecIT(body: StringSpecIT.() -> Unit = {}) : DslDrivenSpec(), StringSpecScope {
-
-    /**
-     * Indexing requests.
-     */
-    private val requestTrack = AtomicInteger(0)
-
-    /**
-     * Lock for _dispatchable_ read/write.
-     */
-    private val lock = ReentrantLock()
-
-    /**
-     * Convenience lambda with receiver that dispatches a [RecordedRequest] to a [MockResponse].
-     *
-     * This be will be used by [MockWebServer] [Dispatcher] dispatch.
-     */
-    @Volatile
-    var dispatchable: RecordedRequest.() -> MockResponse = { MockResponse().setResponseCode(404) }
-        set(value) {
-            requestTrack.incrementAndGet()
-            lock.withLock {
-                field = value
-            }
-        }
-
-    private val server = MockWebServer().apply {
-        this.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse = lock.withLock {
-                request.run(this@StringSpecIT.dispatchable)
-            }
-        }
-        start()
-    }
-
-    init {
-        HttpClient.apiBaseUrl = HttpUrl.Builder()
-            .scheme("http")
-            .host(server.hostName)
-            .port(server.port)
-            .build()
-            .toUri()
-        HttpClient.baseUrl = HttpClient.apiBaseUrl
-        body()
-    }
-
-    final override fun afterSpec(spec: Spec) {
-        try {
-            server.shutdown()
-        } catch (ex: IOException) {
-        }
-    }
-
-    /**
-     * Takes last request.
-     *
-     * @return RecordedRequest
-     * @throws IllegalStateException if there are no recorded requests.
-     */
-    fun lastRequest(): RecordedRequest {
-        val size = requestTrack.get()
-        if (size == 0) {
-            throw IllegalStateException("There are no requests")
-        }
-        var request: RecordedRequest? = null
-        repeat(size) {
-            request = server.takeRequest()
-            requestTrack.decrementAndGet()
-        }
-        return request!!
-    }
-
-    override fun lifecycle(): Lifecycle = Lifecycle.from(this)
-    override fun defaultConfig(): TestCaseConfig = resolvedDefaultConfig()
-    override fun registration(): RootTestRegistration = RootTestRegistration.from(this)
-}
-
-/**
- * CoroutineScope extension that Creates a new [MockWebServer].
+ * CoroutineScope extension that creates a new [MockWebServer].
  * After coroutines are finished the server will close.
  *
  * @param body Scope.

@@ -24,6 +24,7 @@
 package pcf.crskdev.koonsplash.api
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -39,10 +40,10 @@ import pcf.crskdev.koonsplash.auth.BrowserLauncher
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.http.HttpException
 import pcf.crskdev.koonsplash.internal.KoonsplashContext
-import pcf.crskdev.koonsplash.util.StringSpecIT
 import pcf.crskdev.koonsplash.util.checksum
 import pcf.crskdev.koonsplash.util.fileFromPath
 import pcf.crskdev.koonsplash.util.resource
+import pcf.crskdev.koonsplash.util.server
 import pcf.crskdev.koonsplash.util.setBodyFromFile
 import pcf.crskdev.koonsplash.util.setBodyFromResource
 import pcf.crskdev.koonsplash.util.toFile
@@ -58,7 +59,7 @@ import java.util.UUID
 @ExperimentalUnsignedTypes
 @ExperimentalCoroutinesApi
 @FlowPreview
-internal class LinkTest : StringSpecIT({
+internal class LinkTest : StringSpec({
 
     val apiCallProvider: (String) -> ApiCall = { url ->
         ApiCallImpl(
@@ -73,7 +74,8 @@ internal class LinkTest : StringSpecIT({
     "should create the correct links" {
         val apiLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/").toString(), mockk())
         val noPath = Link.create(HttpClient.apiBaseUrl.toString(), mockk())
-        val noPathNoSlash = Link.create(HttpClient.apiBaseUrl.toString().let { it.substring(0, it.length - 1) }, mockk())
+        val noPathNoSlash =
+            Link.create(HttpClient.apiBaseUrl.toString().let { it.substring(0, it.length - 1) }, mockk())
         val browseLink = Link.create("http://example.xyz/", mockk())
         val downloadLink = Link.create(HttpClient.apiBaseUrl.resolve("/foo/bar/download").toString(), mockk())
         val photoLink = Link.create(HttpClient.imagesBaseUrl.resolve("/foo/bar/").toString(), mockk())
@@ -89,179 +91,193 @@ internal class LinkTest : StringSpecIT({
     "should download a photo with Unsplash download policy" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
         val remoteFile = resource("photo_test.png").toFile()
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
-                "/$locationHash" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "image/png".toMediaType())
-                        .setBodyFromFile(remoteFile)
-                else -> throw IllegalStateException("Unknown request path $path")
+
+        server {
+            beforeStart {
+                dispatcher {
+                    when (it.path ?: "/") {
+                        "/photos/Dwu85P9SOIk/download" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
+                        "/$locationHash" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "image/png".toMediaType())
+                                .setBodyFromFile(remoteFile)
+                        else -> throw IllegalStateException("Unknown request path ${it.path}")
+                    }
+                }
             }
+            val link = Link.Download(
+                HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
+                context = context
+            )
+
+            val statuses = link
+                .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+                .toList()
+            val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
+            requireNotNull(fileUri)
+
+            fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+            File(fileUri.path).checksum() shouldBe remoteFile.checksum()
+
+            // cleanup
+            assert(File(fileUri.path).delete())
         }
-
-        val link = Link.Download(
-            HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            context = context
-        )
-
-        val statuses = link
-            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
-            .toList()
-        val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
-        requireNotNull(fileUri)
-
-        fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
-        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
-
-        // cleanup
-        assert(File(fileUri.path).delete())
     }
 
     "should download a photo with Imgix download policy" {
         val remoteFile = resource("photo_test.png").toFile()
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk?ixid=1" ->
+
+        server {
+            beforeStart {
+                enqueue(
                     MockResponse()
                         .setResponseCode(200)
                         .setHeader("Content-Type", "image/png".toMediaType())
                         .setBodyFromFile(remoteFile)
-                else -> throw IllegalStateException("Unknown request path $path")
+                )
             }
+
+            val link = Link.Download(
+                HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk?ixid=1"),
+                Link.Download.Policy.IMGIX,
+                context
+            )
+
+            val statuses = link
+                .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+                .toList()
+            val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
+            requireNotNull(fileUri)
+
+            fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+            File(fileUri.path).checksum() shouldBe remoteFile.checksum()
+
+            // cleanup
+            assert(File(fileUri.path).delete())
         }
-
-        val link = Link.Download(
-            HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk?ixid=1"),
-            Link.Download.Policy.IMGIX,
-            context
-        )
-
-        val statuses = link
-            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
-            .toList()
-        val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
-        requireNotNull(fileUri)
-
-        fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
-        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
-
-        // cleanup
-        assert(File(fileUri.path).delete())
     }
 
     "should download a photo using extension" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
         val remoteFile = resource("photo_test.png").toFile()
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
-                "/$locationHash" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "image/png".toMediaType())
-                        .setBodyFromResource("photo_test.png")
-                else -> throw IllegalStateException("Unknown request path $path")
+
+        server {
+            beforeStart {
+                dispatcher {
+                    when (it.path ?: "/") {
+                        "/photos/Dwu85P9SOIk/download" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
+                        "/$locationHash" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "image/png".toMediaType())
+                                .setBodyFromResource("photo_test.png")
+                        else -> throw IllegalStateException("Unknown request path ${it.path}")
+                    }
+                }
             }
+            val fileUri = Link
+                .Download(
+                    HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
+                    context = context
+                )
+                .download(
+                    fileFromPath("src", "test", "resources"),
+                    "photo_test_downloaded"
+                )
+                .url
+
+            fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
+            File(fileUri.path).checksum() shouldBe remoteFile.checksum()
+
+            // cleanup
+            assert(File(fileUri.path).delete())
         }
-
-        val fileUri = Link
-            .Download(
-                HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                context = context
-            )
-            .download(
-                fileFromPath("src", "test", "resources"),
-                "photo_test_downloaded"
-            )
-            .url
-
-        fileUri.toString().endsWith("photo_test_downloaded.png") shouldBe true
-        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
-
-        // cleanup
-        assert(File(fileUri.path).delete())
     }
 
     "should default to jpg when downloading photo extension is not found" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
         val remoteFile = resource("photo_test.png").toFile()
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
-                "/$locationHash" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setBodyFromResource("photo_test.png")
-                else -> throw IllegalStateException("Unknown request path $path")
+        server {
+            beforeStart {
+                dispatcher {
+                    when (it.path ?: "/") {
+                        "/photos/Dwu85P9SOIk/download" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
+                        "/$locationHash" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setBodyFromResource("photo_test.png")
+                        else -> throw IllegalStateException("Unknown request path ${it.path}")
+                    }
+                }
             }
+            val link = Link.Download(
+                HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
+                context = context
+            )
+            val statuses = link
+                .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+                .toList()
+
+            val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
+            requireNotNull(fileUri)
+
+            fileUri.toString().endsWith("photo_test_downloaded.jpg") shouldBe true
+            File(fileUri.path).checksum() shouldBe remoteFile.checksum()
+
+            // cleanup
+            assert(File(fileUri.path).delete())
         }
-
-        val link = Link.Download(
-            HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            context = context
-        )
-        val statuses = link
-            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
-            .toList()
-
-        val fileUri = statuses.find<LinkPhotoStatusDone>()?.resource?.url
-        requireNotNull(fileUri)
-
-        fileUri.toString().endsWith("photo_test_downloaded.jpg") shouldBe true
-        File(fileUri.path).checksum() shouldBe remoteFile.checksum()
-
-        // cleanup
-        assert(File(fileUri.path).delete())
     }
 
     "should have cancel status if something went wrong on fetching real url location" {
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(500)
-                else -> throw IllegalStateException("Unknown request path $path")
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(500))
             }
+
+            val link = Link.Download(
+                HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
+                context = context
+            )
+            val statuses = link
+                .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
+                .toList()
+
+            statuses.find<LinkPhotoStatusCanceled>()?.shouldNotBeNull()
         }
-
-        val link = Link.Download(
-            HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-            context = context
-        )
-        val statuses = link
-            .downloadWithProgress(fileFromPath("src", "test", "resources"), "photo_test_downloaded")
-            .toList()
-
-        statuses.find<LinkPhotoStatusCanceled>()?.shouldNotBeNull()
     }
 
     "should have cancel status if something went wrong during download" {
         val locationHash = UUID.randomUUID().toString().replace("-", "")
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
-                "/$locationHash" ->
-                    MockResponse()
-                        .setResponseCode(500)
-                else -> throw IllegalStateException("Unknown request path $path")
+
+        server {
+            beforeStart {
+                dispatcher {
+                    when (it.path ?: "/") {
+                        "/photos/Dwu85P9SOIk/download" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody("""{"url":"${HttpClient.apiBaseUrl}$locationHash"}""")
+                        "/$locationHash" ->
+                            MockResponse()
+                                .setResponseCode(500)
+                        else -> throw IllegalStateException("Unknown request path ${it.path}")
+                    }
+                }
             }
         }
 
@@ -277,50 +293,54 @@ internal class LinkTest : StringSpecIT({
     }
 
     "should throw when downloading using extension" {
-        dispatchable = {
-            when (path ?: "/") {
-                "/photos/Dwu85P9SOIk/download" ->
-                    MockResponse()
-                        .setResponseCode(500)
-                else -> throw IllegalStateException("Unknown request path $path")
-            }
-        }
 
-        shouldThrow<HttpException> {
-            Link
-                .Download(
-                    HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
-                    context = context
-                )
-                .download(
-                    fileFromPath("src", "test", "resources"),
-                    "photo_test_downloaded"
-                )
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(500))
+            }
+
+            shouldThrow<HttpException> {
+                Link
+                    .Download(
+                        HttpClient.apiBaseUrl.resolve("photos/Dwu85P9SOIk/download"),
+                        context = context
+                    )
+                    .download(
+                        fileFromPath("src", "test", "resources"),
+                        "photo_test_downloaded"
+                    )
+            }
         }
     }
 
     "should call the ApiLink" {
-        dispatchable = {
-            when (path ?: "/") {
-                "/random" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody(""" {"likes": "${HttpClient.apiBaseUrl.resolve("likes")}"} """)
-                "/likes" ->
-                    MockResponse()
-                        .setResponseCode(200)
-                        .setHeader("Content-Type", "application/json".toMediaType())
-                        .setBody("[]")
-                else -> throw IllegalStateException("Unknown request path $path")
+
+        server {
+            beforeStart {
+                dispatcher {
+                    when (it.path ?: "/") {
+                        "/random" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody(""" {"likes": "${HttpClient.apiBaseUrl.resolve("likes")}"} """)
+                        "/likes" ->
+                            MockResponse()
+                                .setResponseCode(200)
+                                .setHeader("Content-Type", "application/json".toMediaType())
+                                .setBody("[]")
+                        else -> throw IllegalStateException("Unknown request path ${it.path}")
+                    }
+                }
             }
+
+            val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), context = context)
+            val likesLink: Link.Api = apiLink.call()["likes"]()
+
+            likesLink.shouldBeInstanceOf<Link.Api>()
+
+            likesLink.call().isEmpty shouldBe true
         }
-        val apiLink = Link.Api(HttpClient.apiBaseUrl.resolve("random"), context = context)
-        val likesLink: Link.Api = apiLink.call()["likes"]()
-
-        likesLink.shouldBeInstanceOf<Link.Api>()
-
-        likesLink.call().isEmpty shouldBe true
     }
 
     "should open a browser link" {
