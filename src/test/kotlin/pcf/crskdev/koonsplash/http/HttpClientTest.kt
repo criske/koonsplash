@@ -22,6 +22,7 @@
 package pcf.crskdev.koonsplash.http
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,10 +31,10 @@ import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.SocketPolicy
 import pcf.crskdev.koonsplash.http.HttpClient.executeCo
-import pcf.crskdev.koonsplash.util.StringSpecIT
+import pcf.crskdev.koonsplash.util.server
 import java.io.IOException
 
-internal class HttpClientTest : StringSpecIT({
+internal class HttpClientTest : StringSpec({
 
     val templateCall: () -> Call = {
         HttpClient.http.newCall(
@@ -43,46 +44,53 @@ internal class HttpClientTest : StringSpecIT({
         )
     }
     "should be Success" {
-        dispatchable = { MockResponse().setResponseCode(200) }
-
-        templateCall().executeCo().isSuccessful shouldBe true
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(200))
+            }
+            templateCall().executeCo().isSuccessful shouldBe true
+        }
     }
 
     "should be Failure" {
-        dispatchable = {
-            MockResponse().setResponseCode(404)
+        server {
+            beforeStart {
+                enqueue(MockResponse().setResponseCode(404))
+            }
+            val exception = shouldThrow<HttpException> {
+                templateCall().executeCo()
+            }
+            exception.code shouldBe 404
         }
-        val exception = shouldThrow<HttpException> {
-            templateCall().executeCo()
-        }
-        exception.code shouldBe 404
     }
 
     "should throw IO when there is a network problem" {
-        dispatchable = {
-            MockResponse()
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
-        }
-        shouldThrow<IOException> {
-            templateCall().executeCo()
+        server {
+            beforeStart {
+                enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
+            }
+            shouldThrow<IOException> {
+                templateCall().executeCo()
+            }
         }
     }
 
     "should cancel request" {
-        dispatchable = {
-            MockResponse()
-                .setSocketPolicy(SocketPolicy.NO_RESPONSE)
-        }
-        val call = templateCall()
-        val job = launch {
-            call.executeCo()
-        }
+        server {
+            beforeStart {
+                enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+            }
+            val call = templateCall()
+            val job = launch {
+                call.executeCo()
+            }
 
-        launch {
-            delay(500)
-            job.cancel()
-        }.join()
+            launch {
+                delay(500)
+                job.cancel()
+            }.join()
 
-        call.isCanceled() shouldBe true
+            call.isCanceled() shouldBe true
+        }
     }
 })

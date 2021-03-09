@@ -21,6 +21,7 @@
 
 package pcf.crskdev.koonsplash.api
 
+import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.every
@@ -32,10 +33,10 @@ import pcf.crskdev.koonsplash.auth.AuthScope
 import pcf.crskdev.koonsplash.auth.AuthToken
 import pcf.crskdev.koonsplash.http.HttpClient
 import pcf.crskdev.koonsplash.internal.KoonsplashContext
-import pcf.crskdev.koonsplash.util.StringSpecIT
+import pcf.crskdev.koonsplash.util.server
 import pcf.crskdev.koonsplash.util.setBodyFromResource
 
-internal class ApiAuthImplTest : StringSpecIT({
+internal class ApiAuthImpTest : StringSpec({
 
     val authContext = mockk<AuthContext>(relaxed = true)
     coEvery { authContext.getToken() } returns AuthToken("token_123", "bearer", "", AuthScope.ALL, 1)
@@ -47,26 +48,25 @@ internal class ApiAuthImplTest : StringSpecIT({
     )
 
     "should call me" {
-        dispatchable = {
-            when (path ?: "/") {
-                "/me" ->
+        server {
+            beforeStart {
+                enqueue(
                     MockResponse()
                         .setResponseCode(200)
                         .setHeader("Content-Type", "application/json".toMediaType())
                         .setBodyFromResource("me.json")
-                else -> MockResponse().setResponseCode(404)
+                )
             }
-        }
+            val me = api.me()
 
-        val me = api.me()
+            me["id"]<String>() shouldBe "fakeid"
+            me["username"]<String>() shouldBe "foo"
 
-        me["id"]<String>() shouldBe "fakeid"
-        me["username"]<String>() shouldBe "foo"
-
-        with(lastRequest()) {
-            method shouldBe "GET"
-            headers.toMultimap()["Authorization"]!![0] shouldBe "Client-ID key_123"
-            headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
+            with(takeRequest()) {
+                method shouldBe "GET"
+                headers.toMultimap()["Authorization"]!![0] shouldBe "Client-ID key_123"
+                headers.toMultimap()["Authorization"]!![1] shouldBe "Bearer token_123"
+            }
         }
     }
 })
