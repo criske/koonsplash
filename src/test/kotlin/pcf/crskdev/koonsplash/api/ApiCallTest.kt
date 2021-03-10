@@ -73,8 +73,8 @@ internal class ApiCallTest : StringSpec({
                 )
             }
 
-            val apiCall = api.call("/photos/random/{test}?page={number}")
-            val response = apiCall.invoke("test", 1, cancel = null)
+            val apiCall = api.endpoint("/photos/random/{test}?page={number}")
+            val response = apiCall.call("test", 1, cancel = null)
 
             response["id"]<String>() shouldBe "fgc48MAG3Tk"
         }
@@ -92,7 +92,7 @@ internal class ApiCallTest : StringSpec({
                 )
             }
 
-            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             val statuses = apiCall
                 .execute(listOf("test", 1), progressType = ApiCall.Progress.Raw)
                 .toList()
@@ -117,7 +117,7 @@ internal class ApiCallTest : StringSpec({
                 )
             }
 
-            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             val statuses = apiCall
                 .execute(listOf("test", 1), progressType = ApiCall.Progress.Percent)
                 .toList()
@@ -140,7 +140,7 @@ internal class ApiCallTest : StringSpec({
             }
 
             val cancelSignal = MutableSharedFlow<Unit>()
-            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             launch {
                 // TODO somehow this test fails on CI -> throwing a ConnectException instead.
 //                shouldThrow<CancellationException> {
@@ -170,7 +170,7 @@ internal class ApiCallTest : StringSpec({
                 )
             }
             val cancelSignal = MutableSharedFlow<Unit>()
-            val apiCall = api.call("/photos/random/{test}?page={number}")
+            val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             launch {
                 apiCall.execute(listOf("test", 1), cancel = cancelSignal, progressType = ApiCall.Progress.Percent)
                     .toList()[1].shouldBeInstanceOf<ApiCall.Status.Canceled<ApiJsonResponse>>()

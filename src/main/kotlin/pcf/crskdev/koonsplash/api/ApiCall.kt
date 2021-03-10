@@ -53,7 +53,7 @@ import kotlin.math.roundToInt
 /**
  * API call.
  *
- * @see Api.call
+ * @see Api.endpoint
  *
  */
 interface ApiCall {
@@ -66,6 +66,18 @@ interface ApiCall {
      * @return [ApiJsonResponse]
      */
     suspend operator fun invoke(vararg params: Param, cancel: CancelSignal? = null): ApiJsonResponse
+
+    /**
+     * The actual call. Can be canceled.
+     *
+     * See also: [ApiCall.invoke]
+     *
+     * @param cancel Signal that cancel the call. Default null meaning that there is no cancellation.
+     * @param params Params
+     * @return [ApiJsonResponse]
+     */
+    suspend fun call(vararg params: Param, cancel: CancelSignal? = null): ApiJsonResponse =
+        this.invoke(*params, cancel = cancel)
 
     /**
      * Generic execution with observing the call progress. Can be canceled.

@@ -62,7 +62,7 @@ interface Api {
      * @param verb Http verb, default [Verb.Get]
      * @return ApiCall than can be called with Params if wildcard is present
      */
-    fun call(endpoint: String, verb: Verb = Verb.Get): ApiCall
+    fun endpoint(endpoint: String, verb: Verb = Verb.Get): ApiCall
 }
 
 /**
@@ -76,7 +76,7 @@ internal class ApiImpl(
     private val koonsplashContext: KoonsplashContext,
 ) : Api {
 
-    override fun call(endpoint: String, verb: Verb): ApiCall =
+    override fun endpoint(endpoint: String, verb: Verb): ApiCall =
         ApiCallImpl(
             Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb),
             this.httpClient,
