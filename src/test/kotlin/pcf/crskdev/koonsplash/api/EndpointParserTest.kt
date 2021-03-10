@@ -53,12 +53,15 @@ internal class EndpointParserTest : StringSpec({
     }
 
     "should parse with wildcard params" {
-        EndpointParser(
-            Endpoint(
-                api,
-                "$api/photos/{id}/collection/{collection_id}?page={page}&q={q}&fm={jpg}&ordered={ordered}"
-            )
-        ).parse("12345", "col23", 1, 75, "jpg", true) shouldBe listOf(
+        fun parse(vararg params: Param) =
+            EndpointParser(
+                Endpoint(
+                    api,
+                    "$api/photos/{id}/collection/{collection_id}?page={page}&q={q}&fm={jpg}&ordered={ordered}"
+                )
+            ).parse(*params)
+
+        parse("12345", "col23", 1, 75, "jpg", true) shouldBe listOf(
             EndpointParser.Token.Path("photos"),
             EndpointParser.Token.Path("12345"),
             EndpointParser.Token.Path("collection"),
