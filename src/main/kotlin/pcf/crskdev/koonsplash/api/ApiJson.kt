@@ -50,6 +50,11 @@ class ApiJson internal constructor(
     companion object {
 
         /**
+         * Null Api Json.
+         */
+        internal val NULL = ApiJson(JsonNull.INSTANCE, KoonsplashContext.Builder().build())
+
+        /**
          * Create ApiJson from reader
          *
          * @param reader Reader.
@@ -73,9 +78,9 @@ class ApiJson internal constructor(
      * Checks if the ApiJson's wrapped element is empty.
      */
     val isEmpty: Boolean get() = when (jsonEl) {
+        is JsonNull -> true
         is JsonArray -> jsonEl.size() == 0
         is JsonObject -> jsonEl.size() == 0
-        is JsonNull -> true
         else -> jsonEl.toString().isBlank()
     }
 
