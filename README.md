@@ -17,11 +17,11 @@ runBlocking {
                 }
                 .build()
                 .authenticated(
-                    Koonsplash.AuthenticatedBuilder(charArrayOf('s','e','c','r','e','t','-','k','e','y'))
+                    Koonsplash.AuthenticatedBuilder("secret-key".toCharArray())
                         .scopes(AuthScope.PUBLIC + AuthScope.READ_USER + AuthScope.WRITE_USER)
                 )   
                 .api
-    val me = api.call("/me")()
+    val me = api.endpoint("/me").call()
     val myLikesLink: Link.Api = me["links"]["likes"]()
     val firstLikedPhoto = myLikesLink.call()[0]
     val link: Link.Download = firstLikedPhoto["links"]["download_location"]()

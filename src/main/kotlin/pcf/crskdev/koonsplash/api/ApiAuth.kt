@@ -50,9 +50,9 @@ internal class ApiAuthImpl(
     private val koonsplashContext: KoonsplashContext
 ) : ApiAuth, Api by api {
 
-    override suspend fun me(verb: Verb) = call("/me", verb)()
+    override suspend fun me(verb: Verb) = endpoint("/me", verb)()
 
-    override fun call(endpoint: String, verb: Verb): ApiCall =
+    override fun endpoint(endpoint: String, verb: Verb): ApiCall =
         ApiCallImpl(
             Endpoint(HttpClient.apiBaseUrl.toString(), endpoint, verb),
             this.httpClient,

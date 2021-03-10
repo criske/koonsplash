@@ -30,9 +30,9 @@ internal typealias FormEntry = Pair<String, String>
 typealias Param = Any
 
 /**
- * [SharedFlow] of Unit that cancels the [ApiCall] when emits.
+ * [SharedFlow] of Any that cancels the [ApiCall] when emits.
  */
-typealias CancelSignal = SharedFlow<Unit>
+typealias CancelSignal = SharedFlow<*>
 
 /**
  * Selector for a json response [ApiJsonResponse.ApiJson]. Should be String or Int.

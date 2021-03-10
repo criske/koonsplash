@@ -49,7 +49,7 @@ fun main() {
             )
             .api
 
-        val me = api.call("/me")()
+        val me = api.endpoint("/me")()
         val myLikesLink: Link.Api = me["links"]["likes"]()
         val firstLikedPhoto = myLikesLink.call()[0]
         val id: String = firstLikedPhoto["id"]()
