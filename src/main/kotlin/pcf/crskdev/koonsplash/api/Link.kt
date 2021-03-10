@@ -167,12 +167,12 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
             return when (policy) {
                 Policy.UNSPLASH ->
                     this.context.apiCaller(url.toString())
-                        .execute(emptyList(), progressType = ApiCall.Progress.Ignore)
+                        .callWithProgress(progressType = ApiCall.Progress.Ignore)
                         .flatMapConcat {
                             when (it) {
                                 is ApiCall.Status.Done -> {
                                     val downloadUrl: String = it.resource["url"]()
-                                    this.context.apiCaller(downloadUrl).execute(emptyList(), progressType) { response ->
+                                    this.context.apiCaller(downloadUrl).callWithProgress(progressType) { response ->
                                         save(response, dir, fileName, bufferSize)
                                     }
                                 }
@@ -182,7 +182,7 @@ sealed class Link(val url: URI, internal val context: KoonsplashContext) {
                         }
                         .flowOn(dispatcher)
                 Policy.IMGIX ->
-                    this.context.apiCaller(this.url.toString()).execute(emptyList(), progressType) { response ->
+                    this.context.apiCaller(this.url.toString()).callWithProgress(progressType) { response ->
                         save(response, dir, fileName, bufferSize)
                     }.flowOn(dispatcher)
             }

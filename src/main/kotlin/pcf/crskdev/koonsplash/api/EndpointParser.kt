@@ -57,7 +57,7 @@ internal class EndpointParser(endpoint: Endpoint) {
      * @param params Params
      * @return list of endpoint tokens.
      */
-    fun parse(vararg params: Any): List<Token> {
+    fun parse(vararg params: Param): List<Token> {
         if (baseUrl == path) { // we have full url, need for parsing
             return emptyList()
         }

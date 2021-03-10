@@ -94,7 +94,7 @@ internal class ApiCallTest : StringSpec({
 
             val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             val statuses = apiCall
-                .execute(listOf("test", 1), progressType = ApiCall.Progress.Raw)
+                .callWithProgress("test", 1, progressType = ApiCall.Progress.Raw)
                 .toList()
 
             statuses.filterIsInstance<ApiCall.Status.Current<*>>()
@@ -119,7 +119,7 @@ internal class ApiCallTest : StringSpec({
 
             val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             val statuses = apiCall
-                .execute(listOf("test", 1), progressType = ApiCall.Progress.Percent)
+                .callWithProgress("test", 1, progressType = ApiCall.Progress.Percent)
                 .toList()
 
             statuses.filterIsInstance<ApiCall.Status.Current<*>>()
@@ -172,7 +172,7 @@ internal class ApiCallTest : StringSpec({
             val cancelSignal = MutableSharedFlow<Unit>()
             val apiCall = api.endpoint("/photos/random/{test}?page={number}")
             launch {
-                apiCall.execute(listOf("test", 1), cancel = cancelSignal, progressType = ApiCall.Progress.Percent)
+                apiCall.callWithProgress("test", 1, cancel = cancelSignal, progressType = ApiCall.Progress.Percent)
                     .toList()[1].shouldBeInstanceOf<ApiCall.Status.Canceled<ApiJsonResponse>>()
             }
             launch {
