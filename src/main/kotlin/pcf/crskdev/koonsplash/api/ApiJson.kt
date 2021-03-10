@@ -29,9 +29,10 @@ import com.google.gson.JsonParser
 import com.google.gson.internal.LazilyParsedNumber
 import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.io.Reader
+import java.io.StringReader
 
 /**
- * Api response json model tree backed by gson.
+ * Api response json model tree backed by the available json parsing library.
  *
  * @property context: KoonsplashContext
  * @property jsonEl Current json element
@@ -49,10 +50,15 @@ class ApiJson internal constructor(
     companion object {
 
         /**
+         * Null Api Json.
+         */
+        internal val NULL = ApiJson(JsonNull.INSTANCE, KoonsplashContext.Builder().build())
+
+        /**
          * Create ApiJson from reader
          *
-         * @param context KoonsplashContext
-         * @param apiCall Api Call provider
+         * @param reader Reader.
+         * @param context KoonsplashContext.
          */
         internal fun createFromReader(reader: Reader, context: KoonsplashContext) =
             ApiJson(JsonParser.parseReader(reader), context)
@@ -65,7 +71,17 @@ class ApiJson internal constructor(
          * @receiver
          */
         internal fun createFromString(json: String, context: KoonsplashContext) =
-            ApiJson(JsonParser.parseString(json), context)
+            createFromReader(StringReader(json), context)
+    }
+
+    /**
+     * Checks if the ApiJson's wrapped element is empty.
+     */
+    val isEmpty: Boolean get() = when (jsonEl) {
+        is JsonNull -> true
+        is JsonArray -> jsonEl.size() == 0
+        is JsonObject -> jsonEl.size() == 0
+        else -> jsonEl.toString().isBlank()
     }
 
     /**
@@ -140,16 +156,6 @@ class ApiJson internal constructor(
             )
         }
         return ApiJson(element, this.context, selector)
-    }
-
-    /**
-     * Checks if the ApiJson's wrapped element is empty.
-     */
-    val isEmpty: Boolean = when (jsonEl) {
-        is JsonArray -> jsonEl.size() == 0
-        is JsonObject -> jsonEl.size() == 0
-        is JsonNull -> true
-        else -> jsonEl.toString().isBlank()
     }
 
     override fun toString(): String {

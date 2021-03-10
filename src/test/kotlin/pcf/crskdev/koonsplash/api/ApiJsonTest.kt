@@ -34,6 +34,7 @@ internal class ApiJsonTest : StringSpec({
         ApiJson.createFromString("{}", mockk()).isEmpty shouldBe true
         ApiJson.createFromString("[]", mockk()).isEmpty shouldBe true
         ApiJson.createFromString("  ", mockk()).isEmpty shouldBe true
+        ApiJson.NULL.isEmpty shouldBe true
     }
     "should delegate toString" {
         ApiJson.createFromReader(StringReader("[]"), mockk()).toString() shouldBe "[]"

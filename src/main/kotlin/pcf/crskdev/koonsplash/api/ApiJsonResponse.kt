@@ -21,7 +21,6 @@
 
 package pcf.crskdev.koonsplash.api
 
-import com.google.gson.JsonParser
 import pcf.crskdev.koonsplash.internal.KoonsplashContext
 import java.io.Reader
 
@@ -31,7 +30,7 @@ import java.io.Reader
  * Usage:
  * ```kotlin
  *  //assuming json response looks like "[{"message":"Hello","who":{"name":"John"}}]"
- *  val response = api.cal(...)()
+ *  val response = api.endpoint(...).call()
  *  val root: ApiJson = response[0]
  *  println(root)//{"message":"Hi","place":{"name":"World"}}
  *  val message: String = root["message"]() // "hello"
@@ -52,14 +51,9 @@ class ApiJsonResponse internal constructor(
 ) {
 
     /**
-     * Root json element from response.
-     */
-    private val element = JsonParser.parseReader(reader)
-
-    /**
      * ApiJson wrapping json element
      */
-    private val apiJson = ApiJson(element, context)
+    private val apiJson = ApiJson.createFromReader(reader, context)
 
     /**
      * Meta.
